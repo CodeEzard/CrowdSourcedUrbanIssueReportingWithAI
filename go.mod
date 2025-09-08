@@ -9,7 +9,6 @@ require (
 )
 
 require (
-	github.com/codeezard/crowdsourcedurbanissuereportingwithai v0.0.0-20250824145851-f17969a0fc36
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect
@@ -20,3 +19,4 @@ require (
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
+
