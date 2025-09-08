@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestModelsCreation(t *testing.T) {
+func TestModels(t *testing.T) {
 	dsn := "host=localhost user=postgres password=post4321 dbname=Civicissue port=5432 sslmode=disable"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
