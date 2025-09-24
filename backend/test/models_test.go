@@ -28,6 +28,39 @@ func TestModels(t *testing.T) {
 		t.Fatalf("Failed to migrate models: %v", err)
 	}
 
+	// Clean up previous test data in correct order
+	// Find test user, issue, and post IDs
+	var testUser models.User
+	db.Where("email = ?", "testuser@example.com").First(&testUser)
+	var testIssue models.Issue
+	db.Where("name = ?", "Test Issue").First(&testIssue)
+	var testPost models.Post
+	db.Where("description = ?", "Test Post Description").First(&testPost)
+
+	// Delete upvotes referencing test post
+	if testPost.ID != uuid.Nil {
+		db.Where("post_id = ?", testPost.ID).Delete(&models.Upvote{})
+	}
+	// Delete comments referencing test post
+	if testPost.ID != uuid.Nil {
+		db.Where("post_id = ?", testPost.ID).Delete(&models.Comment{})
+	}
+	// Delete posts referencing test issue and user
+	if testIssue.ID != uuid.Nil {
+		db.Where("issue_id = ?", testIssue.ID).Delete(&models.Post{})
+	}
+	if testUser.ID != uuid.Nil {
+		db.Where("user_id = ?", testUser.ID).Delete(&models.Post{})
+	}
+	// Delete issue
+	if testIssue.ID != uuid.Nil {
+		db.Where("id = ?", testIssue.ID).Delete(&models.Issue{})
+	}
+	// Delete user
+	if testUser.ID != uuid.Nil {
+		db.Where("id = ?", testUser.ID).Delete(&models.User{})
+	}
+
 	user := models.User{
 		ID:           uuid.New(),
 		Name:         "Test User",
@@ -105,5 +138,30 @@ func TestModels(t *testing.T) {
 
 	if len(users) == 0 || len(issues) == 0 || len(posts) == 0 || len(comments) == 0 || len(upvotes) == 0 {
 		t.Fatalf("One or more models were not created correctly")
+	}
+
+	t.Logf("\n--- Users ---")
+	for _, u := range users {
+		t.Logf("ID: %s | Name: %s | Email: %s | PasswordHash: %s | CreatedAt: %s | UpdatedAt: %s", u.ID, u.Name, u.Email, u.PasswordHash, u.CreatedAt.Format(time.RFC3339), u.UpdatedAt.Format(time.RFC3339))
+	}
+
+	t.Logf("\n--- Issues ---")
+	for _, i := range issues {
+		t.Logf("ID: %s | Name: %s | Description: %s | Category: %s | CreatedAt: %s | UpdatedAt: %s", i.ID, i.Name, i.Description, i.Category, i.CreatedAt.Format(time.RFC3339), i.UpdatedAt.Format(time.RFC3339))
+	}
+
+	t.Logf("\n--- Posts ---")
+	for _, p := range posts {
+		t.Logf("ID: %s | IssueID: %s | UserID: %s | Description: %s | Status: %s | Urgency: %d | Lat: %.2f | Lng: %.2f | MediaURL: %s | CreatedAt: %s | UpdatedAt: %s", p.ID, p.IssueID, p.UserID, p.Description, p.Status, p.Urgency, p.Lat, p.Lng, p.MediaURL, p.CreatedAt.Format(time.RFC3339), p.UpdatedAt.Format(time.RFC3339))
+	}
+
+	t.Logf("\n--- Comments ---")
+	for _, c := range comments {
+		t.Logf("ID: %s | PostID: %s | UserID: %s | Content: %s | CreatedAt: %s", c.ID, c.PostID, c.UserID, c.Content, c.CreatedAt.Format(time.RFC3339))
+	}
+
+	t.Logf("\n--- Upvotes ---")
+	for _, u := range upvotes {
+		t.Logf("ID: %s | PostID: %s | UserID: %s | CreatedAt: %s", u.ID, u.PostID, u.UserID, u.CreatedAt.Format(time.RFC3339))
 	}
 }
