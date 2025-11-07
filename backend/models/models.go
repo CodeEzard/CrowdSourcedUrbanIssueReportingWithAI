@@ -8,11 +8,11 @@ import (
 
 // Issue category constants
 const (
-	CategoryLighting    = "Lighting"
-	CategoryRoad        = "Road"
-	CategorySanitation  = "Sanitation"
-	CategoryUtilities   = "Utilities"
-	CategoryVandalism   = "Vandalism"
+	CategoryLighting   = "Lighting"
+	CategoryRoad       = "Road"
+	CategorySanitation = "Sanitation"
+	CategoryUtilities  = "Utilities"
+	CategoryVandalism  = "Vandalism"
 )
 
 type User struct {

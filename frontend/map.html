@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Urban Civic - Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <main id="app">
+    <section id="view-map" class="view active">
+      <div class="card">
+        <h2>Issue Map</h2>
+        <div id="map"></div>
+        <div class="legend" style="margin-top: 16px;">
+          <h4>Legend</h4>
+          <div><i class="fas fa-road" style="color:#dc2626"></i> Pothole</div>
+          <div><i class="fas fa-trash" style="color:#15803d"></i> Garbage</div>
+          <div><i class="fas fa-lightbulb" style="color:#f59e0b"></i> Streetlight</div>
+          <div><i class="fas fa-water" style="color:#0284c7"></i> Waterlogging</div>
+        </div>
+      </div>
+    </section>
+
+    <div id="issue-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close" aria-label="Close modal">✕</button>
+        <h3 id="modal-title"></h3>
+        <div id="modal-content"></div>
+        <div class="comment-form">
+          <label for="comment-input">Add a Comment</label>
+          <textarea id="comment-input" aria-label="Add a comment"></textarea>
+          <button class="btn" id="comment-submit" aria-label="Post comment">Post Comment</button>
+        </div>
+        <div class="comments" id="modal-comments"></div>
+      </div>
+    </div>
+  </main>
+
+  
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    fetch('includes/header.html')
+      .then(response => response.text())
+      .then(data => {
+        qs('#header-placeholder').innerHTML = data;
+        initHeader();
+      });
+
+    let map = null;
+
+    function initHeader() {
+      qs('#nav-map').classList.add('active');
+      qs('#menu-toggle').addEventListener('click', () => {
+        qs('nav').classList.toggle('active');
+      });
+      document.addEventListener('click', e => {
+        if (!qs('nav').contains(e.target) && !qs('#menu-toggle').contains(e.target)) {
+          qs('nav').classList.remove('active');
+        }
+      });
+      qsa('nav a').forEach(link => {
+        link.addEventListener('click', () => {
+          qs('nav').classList.remove('active');
+        });
+      });
+      qs('#role').value = role;
+      qs('#role').addEventListener('change', e => {
+        role = e.target.value;
+        localStorage.setItem('uc_role', role);
+        updateProfileLink();
+      });
+      qs('#theme-toggle').addEventListener('click', () => {
+        document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('uc_theme', document.body.dataset.theme);
+        qs('#theme-toggle').textContent = document.body.dataset.theme === 'dark' ? '☀️' : '🌙';
+      });
+      if (localStorage.getItem('uc_theme') === 'dark') {
+        document.body.dataset.theme = 'dark';
+        qs('#theme-toggle').textContent = '☀️';
+      }
+      updateProfileLink();
+    }
+
+    function updateProfileLink() {
+      qs('#nav-profile').textContent = role === 'admin' ? 'Admin' : 'Profile';
+    }
+
+    function showModal(issue) {
+      qs('#modal-title').textContent = issue.title;
+      qs('#modal-content').innerHTML = `
+        <img src="${issue.photo || 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"100%\" height=\"100%\" fill=\"%23f3f9f8\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">No Image</text></svg>'}" alt="${issue.title}">
+        <div><strong>Category:</strong> ${issue.category}</div>
+        <div><strong>Location:</strong> ${issue.location}</div>
+        <div><strong>Description:</strong> ${issue.desc}</div>
+        <div><strong>Status:</strong> <span class="status ${issue.status}">${issue.status}</span></div>
+        <div><strong>Votes:</strong> ${issue.votes}▲</div>
+        <div><strong>Reported by:</strong> ${issue.reporter}</div>
+        ${issue.assignedAt ? `<div><strong>Assigned:</strong> ${new Date(issue.assignedAt).toLocaleString()}</div>` : ''}
+      `;
+      qs('#modal-comments').innerHTML = issue.comments.map(c => `<div class="comment"><strong>${c.user}:</strong> ${c.text} <span class="muted small">(${new Date(c.timestamp).toLocaleString()})</span></div>`).join('');
+      qs('#issue-modal').style.display = 'flex';
+      qs('#issue-modal').classList.add('active');
+      qs('#comment-input').focus();
+      qs('#comment-submit').dataset.issueId = issue.id;
+    }
+
+    qs('#modal-close').addEventListener('click', () => {
+      qs('#issue-modal').style.display = 'none';
+      qs('#issue-modal').classList.remove('active');
+      qs('#comment-input').value = '';
+      delete qs('#comment-submit').dataset.issueId;
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && qs('#issue-modal').style.display === 'flex') {
+        qs('#issue-modal').style.display = 'none';
+        qs('#issue-modal').classList.remove('active');
+        qs('#comment-input').value = '';
+        delete qs('#comment-submit').dataset.issueId;
+      }
+    });
+
+    qs('#comment-submit').addEventListener('click', async () => {
+      const comment = qs('#comment-input').value.trim();
+      const issueId = qs('#comment-submit').dataset.issueId;
+      if (!comment || !issueId) return;
+      try {
+        const resp = await postComment(String(issueId), comment);
+        const issue = issues.find(i => String(i.id) === String(issueId));
+        if (issue) {
+          issue.comments.push({ user: resp.user?.name || currentUser, text: resp.content || comment, timestamp: resp.created_at || new Date().toISOString() });
+          showToast('Comment added!');
+          showModal(issue);
+          initMap();
+        }
+        qs('#comment-input').value = '';
+      } catch (err) {
+        console.warn('Failed to post comment:', err);
+        showToast('Failed to add comment: ' + (err.message || ''), 'error');
+      }
+    });
+
+    function initMap() {
+      if (map) map.remove();
+      map = L.map('map').setView([20.5937, 78.9629], 5);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      const icons = {
+        Pothole: L.divIcon({ className: 'custom-icon', html: '<i class="fas fa-road" style="color:#dc2626;font-size:24px;"></i>' }),
+        Garbage: L.divIcon({ className: 'custom-icon', html: '<i class="fas fa-trash" style="color:#15803d;font-size:24px;"></i>' }),
+        Streetlight: L.divIcon({ className: 'custom-icon', html: '<i class="fas fa-lightbulb" style="color:#f59e0b;font-size:24px;"></i>' }),
+        Waterlogging: L.divIcon({ className: 'custom-icon', html: '<i class="fas fa-water" style="color:#0284c7;font-size:24px;"></i>' })
+      };
+
+      const markers = issues
+        .filter(issue => issue.lat && issue.lon)
+        .map(issue => {
+          const marker = L.marker([issue.lat, issue.lon], {
+            icon: icons[issue.category] || L.icon({ iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png' })
+          })
+            .bindPopup(`
+              <div class="popup-content">
+                <b>${issue.title}</b><br>
+                ${issue.desc}
+              </div>
+            `);
+          marker.on('click', () => showModal(issue));
+          return marker.addTo(map);
+        });
+
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds());
+      } else {
+        console.warn('No valid markers to display on the map.');
+      }
+    }
+
+    (async () => {
+      await fetchFeedFromServer();
+      initMap();
+    })();
+  </script>
+</body>
+</html>

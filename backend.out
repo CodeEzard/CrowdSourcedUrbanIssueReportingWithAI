@@ -1,0 +1,7 @@
+2025/11/07 02:11:47 Redis configured; token revocation enabled
+2025/11/07 02:11:47 Server running on :8080
+
+2025/11/07 02:11:48 [31;1mC:/Users/ASUS/Desktop/Web P/CrowdSourcedUrbanIssueReportingWithAI/backend/internal/repository/repository.go:28 [35;1mrecord not found
+[0m[33m[1.071ms] [34;1m[rows:0][0m SELECT * FROM "issues" WHERE name = 'Automation Test Issue' ORDER BY "issues"."id" LIMIT 1
+2025/11/07 02:32:58 Shutting down server...
+2025/11/07 02:32:58 Server exited properly

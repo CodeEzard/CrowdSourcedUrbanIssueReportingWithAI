@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - AI Internship Match</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <canvas id="bubble-canvas"></canvas>
+
+  <nav>
+    <div class="logo">AI Internship<span style="color:#ee0979">Match</span></div>
+    <button class="btn">Get Access</button>
+  </nav>
+
+  <div class="login-container">
+    <div class="login-box">
+      <h2>Login</h2>
+      <p>Sign in with Google</p>
+
+      <input type="text" id="userName" placeholder="Enter your name" required>
+
+      <div id="g_id_onload"
+        data-client_id="810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com"
+        data-callback="handleCredentialResponse">
+      </div>
+
+      <div class="g_id_signin"
+        data-type="standard"
+        data-shape="rectangular"
+        data-theme="outline"
+        data-text="sign_in_with"
+        data-size="large">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function handleCredentialResponse(response) {
+      const name = document.getElementById("userName").value.trim();
+      if (!name) {
+        alert("Please enter your name before signing in.");
+        return;
+      }
+
+      // Mock backend response (temporary)
+      // --- Replace this with your real backend URL later ---
+      const mockResponse = {
+        token: "mock_jwt_token_123",
+        user: {
+          name: name,
+          email: "mockuser@gmail.com",
+          reports: [
+            { id: 1, title: "Pothole near school", status: "Pending" },
+            { id: 2, title: "Broken streetlight", status: "Resolved" }
+          ],
+          upvoted: [
+            { id: 5, title: "Garbage near park" },
+            { id: 6, title: "Leaking pipeline" }
+          ]
+        }
+      };
+
+      // Store mock data in localStorage (acts like real backend data)
+      localStorage.setItem("jwt", mockResponse.token);
+      localStorage.setItem("userData", JSON.stringify(mockResponse.user));
+
+      alert("Login successful!");
+      window.location.href = "profile.html";
+    }
+
+    // Bubbles animation
+    const canvas = document.getElementById("bubble-canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    let bubbles = [];
+    const numBubbles = 60;
+
+    class Bubble {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.radius = Math.random() * 8 + 2;
+        this.speedY = Math.random() * -1 - 0.2;
+        this.alpha = Math.random() * 0.5 + 0.2;
+      }
+      update() {
+        this.y += this.speedY;
+        if (this.y + this.radius < 0) {
+          this.y = canvas.height + this.radius;
+          this.x = Math.random() * canvas.width;
+        }
+      }
+      draw() {
+        ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initBubbles() {
+      bubbles = [];
+      for (let i = 0; i < numBubbles; i++) bubbles.push(new Bubble());
+    }
+
+    function animateBubbles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bubbles.forEach(b => { b.update(); b.draw(); });
+      requestAnimationFrame(animateBubbles);
+    }
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initBubbles();
+    });
+
+    initBubbles();
+    animateBubbles();
+  </script>
+</body>
+</html>

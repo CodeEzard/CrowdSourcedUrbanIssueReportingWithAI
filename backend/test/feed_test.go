@@ -3,10 +3,10 @@ package test
 import (
 	"crowdsourcedurbanissuereportingwithai/backend/internal/repository"
 	"crowdsourcedurbanissuereportingwithai/backend/internal/services"
-	"testing"
+	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"fmt"
+	"testing"
 )
 
 func TestFeedService(t *testing.T) {
@@ -27,28 +27,28 @@ func TestFeedService(t *testing.T) {
 	db.Exec("DELETE FROM users")
 
 	user := &struct {
-		ID   string
-		Name string
-		Email string
+		ID           string
+		Name         string
+		Email        string
 		PasswordHash string
 	}{
-		ID:   "11111111-1111-1111-1111-111111111111",
-		Name: "FeedTestUser",
-		Email: "feedtestuser@example.com",
+		ID:           "11111111-1111-1111-1111-111111111111",
+		Name:         "FeedTestUser",
+		Email:        "feedtestuser@example.com",
 		PasswordHash: "hashed",
 	}
 	db.Exec("INSERT INTO users (id, name, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())", user.ID, user.Name, user.Email, user.PasswordHash)
 
 	issue := &struct {
-		ID   string
-		Name string
+		ID          string
+		Name        string
 		Description string
-		Category string
+		Category    string
 	}{
-		ID:   "22222222-2222-2222-2222-222222222222",
-		Name: "FeedTestIssue",
+		ID:          "22222222-2222-2222-2222-222222222222",
+		Name:        "FeedTestIssue",
 		Description: "Feed test issue desc",
-		Category: "FeedTestCat",
+		Category:    "FeedTestCat",
 	}
 	db.Exec("INSERT INTO issues (id, name, description, category, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(), NOW())", issue.ID, issue.Name, issue.Description, issue.Category)
 

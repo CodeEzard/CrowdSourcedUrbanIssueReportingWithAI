@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile - AI Internship Match</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="bubble-canvas"></canvas>
+
+  <nav>
+    <div class="logo">AI Internship<span style="color:#ee0979">Match</span></div>
+    <button class="btn" id="logoutBtn">Logout</button>
+  </nav>
+
+  <div class="login-container">
+    <div class="login-box">
+      <h2>Welcome, <span id="userNameDisplay"></span> 👋</h2>
+      <p>Here’s your activity summary</p>
+
+      <h3>Your Reports</h3>
+      <ul id="reportList" style="text-align:left; margin-bottom:20px;"></ul>
+
+      <h3>Upvoted Issues</h3>
+      <ul id="upvotedList" style="text-align:left;"></ul>
+    </div>
+  </div>
+
+  <script>
+    const userData = JSON.parse(localStorage.getItem("userData"));
+    if (!userData) {
+      alert("You must log in first!");
+      window.location.href = "login2.html";
+    }
+
+    document.getElementById("userNameDisplay").textContent = userData.name;
+
+    const reportList = document.getElementById("reportList");
+    userData.reports.forEach(r => {
+      const li = document.createElement("li");
+      li.textContent = `${r.title} — ${r.status}`;
+      reportList.appendChild(li);
+    });
+
+    const upvotedList = document.getElementById("upvotedList");
+    userData.upvoted.forEach(u => {
+      const li = document.createElement("li");
+      li.textContent = u.title;
+      upvotedList.appendChild(li);
+    });
+
+    document.getElementById("logoutBtn").onclick = () => {
+      localStorage.clear();
+      window.location.href = "login2.html";
+    };
+
+    // Bubbles animation reused
+    const canvas = document.getElementById("bubble-canvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    let bubbles = [];
+    const numBubbles = 60;
+
+    class Bubble {
+      constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.radius = Math.random() * 8 + 2;
+        this.speedY = Math.random() * -1 - 0.2;
+        this.alpha = Math.random() * 0.5 + 0.2;
+      }
+      update() {
+        this.y += this.speedY;
+        if (this.y + this.radius < 0) {
+          this.y = canvas.height + this.radius;
+          this.x = Math.random() * canvas.width;
+        }
+      }
+      draw() {
+        ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function initBubbles() {
+      bubbles = [];
+      for (let i = 0; i < numBubbles; i++) bubbles.push(new Bubble());
+    }
+
+    function animateBubbles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bubbles.forEach(b => { b.update(); b.draw(); });
+      requestAnimationFrame(animateBubbles);
+    }
+
+    window.addEventListener("resize", () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initBubbles();
+    });
+
+    initBubbles();
+    animateBubbles();
+  </script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Urban Civic - Report</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="header-placeholder"></div>
+
+  <main id="app">
+    <section id="view-report" class="view active">
+      <div class="card">
+        <h2>Report an Issue</h2>
+        <div class="progress">
+          <div class="progress-step active">1. Photo & Description</div>
+          <div class="progress-step">2. Details & Location</div>
+        </div>
+        <form id="report-form">
+          <div id="step-1" class="report-step active">
+            <h3>Step 1: Upload Photo and Write Description</h3>
+            <div style="margin-top:12px">
+              <label for="r-photo">Photo (optional)</label>
+              <input type="file" id="r-photo" accept="image/*" aria-label="Upload issue photo">
+              <div id="photo-preview" style="margin-top:12px"></div>
+            </div>
+            <div style="margin-top:12px">
+              <label for="r-desc">Description</label>
+              <textarea id="r-desc" aria-label="Issue description"></textarea>
+            </div>
+            <button type="button" id="next-step" class="btn" style="margin-top:16px">Next Step</button>
+          </div>
+
+          <div id="step-2" class="report-step" style="display:none">
+            <h3>Step 2: Details and Location</h3>
+            <div>
+              <label for="r-title">Title</label>
+              <input type="text" id="r-title" required aria-required="true">
+              <div id="r-title-error" class="error-message"></div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <div style="flex:1">
+                <label for="r-category">Category</label>
+                <select id="r-category" aria-label="Select issue category">
+                  <option>Pothole</option>
+                  <option>Garbage</option>
+                  <option>Streetlight</option>
+                  <option>Waterlogging</option>
+                </select>
+              </div>
+              <div style="flex:1">
+                <label for="r-location">Location</label>
+                <input type="text" id="r-location" placeholder="e.g. MG Road" required aria-required="true">
+                <div id="r-location-error" class="error-message"></div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:12px;justify-content:flex-end">
+              <button type="button" id="prev-step" class="btn secondary" style="display:none">Previous</button>
+              <button class="btn" type="submit">Submit Report</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="js/common.js"></script>
+  <script>
+    fetch('includes/header.html')
+      .then(response => response.text())
+      .then(data => {
+        qs('#header-placeholder').innerHTML = data;
+        initHeader();
+      });
+
+    function initHeader() {
+      qs('#nav-report').classList.add('active');
+      qs('#menu-toggle').addEventListener('click', () => {
+        qs('nav').classList.toggle('active');
+      });
+      document.addEventListener('click', e => {
+        if (!qs('nav').contains(e.target) && !qs('#menu-toggle').contains(e.target)) {
+          qs('nav').classList.remove('active');
+        }
+      });
+      qsa('nav a').forEach(link => {
+        link.addEventListener('click', () => {
+          qs('nav').classList.remove('active');
+        });
+      });
+      qs('#role').value = role;
+      qs('#role').addEventListener('change', e => {
+        role = e.target.value;
+        localStorage.setItem('uc_role', role);
+        updateProfileLink();
+      });
+      qs('#theme-toggle').addEventListener('click', () => {
+        document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('uc_theme', document.body.dataset.theme);
+        qs('#theme-toggle').textContent = document.body.dataset.theme === 'dark' ? '☀️' : '🌙';
+      });
+      if (localStorage.getItem('uc_theme') === 'dark') {
+        document.body.dataset.theme = 'dark';
+        qs('#theme-toggle').textContent = '☀️';
+      }
+      updateProfileLink();
+    }
+
+    function updateProfileLink() {
+      qs('#nav-profile').textContent = role === 'admin' ? 'Admin' : 'Profile';
+    }
+
+    qs('#report-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const title = qs('#r-title').value.trim();
+      const location = qs('#r-location').value.trim();
+      const titleError = qs('#r-title-error');
+      const locationError = qs('#r-location-error');
+      const submitBtn = qs('#report-form button[type="submit"]');
+
+      titleError.textContent = '';
+      locationError.textContent = '';
+      qs('#r-title').classList.remove('input-error');
+      qs('#r-location').classList.remove('input-error');
+
+      let isValid = true;
+      if (title.length < 3) {
+        titleError.textContent = 'Title must be at least 3 characters long.';
+        qs('#r-title').classList.add('input-error');
+        isValid = false;
+      }
+      if (location.length < 3) {
+        locationError.textContent = 'Location must be at least 3 characters long.';
+        qs('#r-location').classList.add('input-error');
+        isValid = false;
+      }
+      if (!isValid) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      const category = qs('#r-category').value;
+      const desc = qs('#r-desc').value.trim();
+      const photo = qs('#r-photo').dataset.src || '';
+      const id = Date.now();
+      const latLon = qs('#r-location').dataset.latLon ? JSON.parse(qs('#r-location').dataset.latLon) : { lat: null, lon: null };
+
+      // Build payload expected by backend ReportRequest
+      const payload = {
+        issue_name: title,
+        issue_desc: desc,
+        issue_cat: category,
+        post_desc: desc,
+        status: 'open',
+        urgency: 1,
+        lat: latLon.lat,
+        lng: latLon.lon,
+        media_url: photo
+      };
+
+      // POST to backend /report. Failures are surfaced to the user. We no
+      // longer persist reports in localStorage — the backend is the canonical store.
+      try {
+        const token = localStorage.getItem('jwt');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        const resp = await fetch('/report', { method: 'POST', headers, body: JSON.stringify(payload), credentials: 'same-origin' });
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => '');
+          throw new Error('Server returned ' + resp.status + ' ' + text);
+        }
+        const posted = await resp.json();
+        // Map returned post to frontend issue shape and add to current in-memory view
+        const issueObj = {
+          id: posted.id || id,
+          title: posted.issue?.name || title,
+          category: posted.issue?.category || category,
+          location: posted.issue?.description || location,
+          desc: posted.description || desc,
+          photo: posted.media_url || photo,
+          lat: posted.lat || latLon.lat,
+          lon: posted.lng || latLon.lon,
+          votes: 0,
+          status: posted.status || 'open',
+          reporter: posted.user?.name || currentUser,
+          comments: posted.comments || [],
+          assignedAt: posted.assigned_at || null
+        };
+        issues.unshift(issueObj);
+        // Do not persist to localStorage; server is source of truth.
+        showToast('Report submitted to server successfully!');
+      } catch (err) {
+        console.warn('Report submit failed:', err);
+        showToast('Failed to submit report: ' + (err.message || err), 'error');
+        // Re-enable the submit button so user can retry
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Report';
+        return; // keep user on the form to allow retry
+      }
+
+      // Reset form
+      qs('#report-form').reset();
+      qs('#photo-preview').innerHTML = '';
+      delete qs('#r-photo').dataset.src;
+      delete qs('#r-location').dataset.latLon;
+      qs('#step-1').classList.add('active');
+      qs('#step-2').classList.remove('active');
+      qs('#step-2').style.display = 'none';
+      qs('#step-1').style.display = 'block';
+      qs('#next-step').style.display = 'block';
+      qs('#prev-step').style.display = 'none';
+      qs('#r-desc').value = '';
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Report';
+  showToast('Report submitted successfully!');
+  // Navigate back to the home page where the latest feed will be fetched
+  window.location.href = 'index.html';
+    });
+
+    qs('#r-photo').addEventListener('change', e => {
+      const f = e.target.files[0];
+      if (!f || !f.type.startsWith('image/')) {
+        showToast('Please select a valid image file.', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.src = ev.target.result;
+        img.onerror = () => showToast('Failed to load image.', 'error');
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const maxSize = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) {
+            if (width > maxSize) {
+              height *= maxSize / width;
+              width = maxSize;
+            }
+          } else {
+            if (height > maxSize) {
+              width *= maxSize / height;
+              height = maxSize;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          qs('#r-photo').dataset.src = canvas.toDataURL('image/jpeg', 0.8);
+          qs('#photo-preview').innerHTML = `<img src="${qs('#r-photo').dataset.src}" style="max-width:100%;border-radius:10px" alt="Photo preview">`;
+        };
+      };
+      reader.onerror = () => showToast('Failed to read image file.', 'error');
+      reader.readAsDataURL(f);
+    });
+
+    qs('#r-location').addEventListener('focus', async () => {
+      if (navigator.geolocation) {
+        qs('#r-location').placeholder = 'Fetching location...';
+        navigator.geolocation.getCurrentPosition(
+          async pos => {
+            const address = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+            qs('#r-location').value = address;
+            qs('#r-location').dataset.latLon = JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+            showToast('Location fetched successfully!');
+          },
+          err => {
+            console.warn('Geolocation failed:', err);
+            qs('#r-location').value = '';
+            qs('#r-location').placeholder = 'e.g. MG Road';
+            showToast('Geolocation failed. Please enter location manually.', 'error');
+          }
+        );
+      } else {
+        qs('#r-location').placeholder = 'e.g. MG Road';
+        showToast('Geolocation not supported by your browser.', 'error');
+      }
+    });
+
+    qs('#next-step').addEventListener('click', () => {
+      const desc = qs('#r-desc').value.trim();
+      if (!desc) {
+        showToast('Please provide a description.', 'error');
+        return;
+      }
+      qs('#step-1').classList.remove('active');
+      qs('#step-2').classList.add('active');
+      qs('#step-1').style.display = 'none';
+      qs('#step-2').style.display = 'block';
+      qs('#next-step').style.display = 'none';
+      qs('#prev-step').style.display = 'block';
+    });
+
+    qs('#prev-step').addEventListener('click', () => {
+      qs('#step-2').classList.remove('active');
+      qs('#step-1').classList.add('active');
+      qs('#step-2').style.display = 'none';
+      qs('#step-1').style.display = 'block';
+      qs('#next-step').style.display = 'block';
+      qs('#prev-step').style.display = 'none';
+    });
+  </script>
+</body>
+</html>

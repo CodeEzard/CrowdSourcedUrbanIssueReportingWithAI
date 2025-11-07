@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - AI Internship Recommender</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Inter", Arial, sans-serif;
+      background: #0e0e0e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 50px;
+      position: relative;
+      z-index: 1;
+    }
+
+    nav .logo {
+      font-weight: bold;
+      font-size: 1.2rem;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border: 1px solid #555;
+      border-radius: 8px;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .btn:hover {
+      background: linear-gradient(90deg, #ff6a00, #ee0979);
+      border: none;
+    }
+
+    .login-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .login-box {
+      background: rgb(103 91 91 / 95%);
+      padding: 60px 50px;
+      border-radius: 20px;
+      max-width: 450px;
+      width: 100%;
+      transition: all 0.5s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-box h2 {
+      margin-bottom: 10px;
+    }
+
+    .login-box p {
+      color: #bbb;
+      margin-bottom: 25px;
+    }
+
+    .g_id_signin {
+      display: flex;
+      justify-content: center;
+    }
+
+    footer {
+      background: transparent;
+      padding: 20px 50px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      color: #888;
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    footer a {
+      color: #aaa;
+      text-decoration: none;
+      margin-right: 20px;
+    }
+
+    footer a:hover {
+      color: #fff;
+    }
+  </style>
+
+  <script>
+  function handleCredentialResponse(response) {
+    console.log("Google ID Token:", response.credential);
+
+    // Mock success flow for UI testing
+    alert("Login successful! (UI test only)");
+
+    // Redirect to index.html after 1 second
+    setTimeout(() => {
+      window.location.href = "index.html";
+    });
+
+    // --- Backend integration (keep commented for now) ---
+    /*
+    fetch("http://localhost:8080/api/auth/google", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: response.credential })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.token) {
+        localStorage.setItem("jwt", data.token);
+        alert("Login successful!");
+        window.location.href = "index.html";
+      } else {
+        alert("Login failed!");
+      }
+    })
+    .catch(console.error);
+    */
+  }
+</script>
+
+</head>
+<body>
+
+<canvas id="bubble-canvas"></canvas>
+
+<nav>
+  <div class="logo">AI Internship<span style="color:#ee0979">Match</span></div>
+  <button class="btn">Register</button>
+</nav>
+
+<div class="login-container">
+  <div class="login-box">
+    <h2>Welcome Back</h2>
+    <p>Login to continue your AI internship journey</p>
+
+    <div id="g_id_onload"
+      data-client_id="810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-shape="rectangular"
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-size="large">
+    </div>
+
+    <!-- Simple email/password form that posts to backend /login -->
+    <form id="login-form" style="margin-top:18px; display:flex;flex-direction:column;gap:12px">
+      <input id="email" type="email" placeholder="Email" required style="padding:10px;border-radius:8px;border:1px solid #444;background:transparent;color:#fff">
+      <input id="password" type="password" placeholder="Password" required style="padding:10px;border-radius:8px;border:1px solid #444;background:transparent;color:#fff">
+      <button type="submit" class="btn">Login</button>
+    </form>
+    <div style="margin-top:12px;color:#bbb;font-size:0.9rem">Or sign-in using Google above (UI-only in this demo)</div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById("bubble-canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let bubbles = [];
+  const numBubbles = 60;
+
+  class Bubble {
+    constructor() {
+      this.x = Math.random() * canvas.width;
+      this.y = Math.random() * canvas.height;
+      this.radius = Math.random() * 8 + 2;
+      this.speedY = Math.random() * -1 - 0.2;
+      this.alpha = Math.random() * 0.5 + 0.2;
+    }
+
+    update() {
+      this.y += this.speedY;
+      if (this.y + this.radius < 0) {
+        this.y = canvas.height + this.radius;
+        this.x = Math.random() * canvas.width;
+      }
+    }
+
+    draw() {
+      ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function initBubbles() {
+    bubbles = [];
+    for (let i = 0; i < numBubbles; i++) {
+      bubbles.push(new Bubble());
+    }
+  }
+
+  function animateBubbles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let bubble of bubbles) {
+      bubble.update();
+      bubble.draw();
+    }
+    requestAnimationFrame(animateBubbles);
+  }
+
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    initBubbles();
+  });
+
+  initBubbles();
+  animateBubbles();
+</script>
+
+<script>
+  // Simple login form behavior: POST /login {email,password} -> {access_token}
+  document.getElementById('login-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'same-origin'
+      });
+      if (!res.ok) {
+        alert('Login failed: ' + res.status);
+        return;
+      }
+      const data = await res.json();
+      if (data && data.access_token) {
+        localStorage.setItem('jwt', data.access_token);
+        alert('Login successful');
+        window.location.href = 'index.html';
+      } else {
+        alert('Login failed: invalid response');
+      }
+    } catch (err) {
+      console.error('Login error', err);
+      alert('Login error');
+    }
+  });
+</script>
+
+</body>
+</html>

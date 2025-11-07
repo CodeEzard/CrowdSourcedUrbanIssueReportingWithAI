@@ -1,10 +1,10 @@
-
 package config
 
 import (
-	"github.com/joho/godotenv"
-	"os"
 	"log"
+	"os"
+
+	"github.com/joho/godotenv"
 )
 
 func LoadEnv() {
@@ -22,4 +22,24 @@ func GetDSN() string {
 	port := os.Getenv("DB_PORT")
 	sslmode := os.Getenv("DB_SSLMODE")
 	return "host=" + host + " user=" + user + " password=" + password + " dbname=" + dbname + " port=" + port + " sslmode=" + sslmode
+}
+
+// GetJWTSecret returns the JWT signing secret from environment.
+func GetJWTSecret() string {
+	return os.Getenv("JWT_SECRET")
+}
+
+// GetRedisAddr returns the Redis address (HOST:PORT) from environment.
+func GetRedisAddr() string {
+	return os.Getenv("REDIS_ADDR")
+}
+
+// GetRedisPassword returns the Redis password from environment.
+func GetRedisPassword() string {
+	return os.Getenv("REDIS_PASSWORD")
+}
+
+// GetAllowedOrigin returns the configured ALLOWED_ORIGIN for CORS
+func GetAllowedOrigin() string {
+	return os.Getenv("ALLOWED_ORIGIN")
 }

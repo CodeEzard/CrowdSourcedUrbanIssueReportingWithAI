@@ -33,3 +33,29 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 func (s *FeedService) GetFeed() ([]models.Post, error) {
 	return s.PostRepo.GetFeedPosts()
 }
+
+// AddComment wraps repository call to add a comment
+func (s *ReportService) AddComment(userID, postID, content string) (*models.Comment, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, err
+	}
+	pid, err := uuid.Parse(postID)
+	if err != nil {
+		return nil, err
+	}
+	return s.PostRepo.AddComment(uid, pid, content)
+}
+
+// ToggleUpvote wraps repository call to toggle an upvote
+func (s *ReportService) ToggleUpvote(userID, postID string) (bool, error) {
+	uid, err := uuid.Parse(userID)
+	if err != nil {
+		return false, err
+	}
+	pid, err := uuid.Parse(postID)
+	if err != nil {
+		return false, err
+	}
+	return s.PostRepo.ToggleUpvote(uid, pid)
+}
