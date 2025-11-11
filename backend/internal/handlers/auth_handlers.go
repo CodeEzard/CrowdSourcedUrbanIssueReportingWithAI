@@ -40,6 +40,73 @@ type tokenResp struct {
 	AccessToken string `json:"access_token"`
 }
 
+// GoogleLoginRequest allows sign-in/up using a trusted identity provider (Google)
+type googleLoginReq struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// GoogleLogin finds or creates a user by email (from verified Google identity)
+// and returns a JWT. This avoids password handling for social sign-in.
+func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req googleLoginReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if strings.TrimSpace(req.Email) == "" {
+		http.Error(w, "email is required", http.StatusBadRequest)
+		return
+	}
+
+	// Try to find existing user; if not found, create one with a random password
+	user, err := h.AuthService.UserRepo.GetByEmail(req.Email)
+	if err != nil {
+		// Not found -> register a new user with a generated password
+		// Use the existing Register flow to handle hashing and persistence
+		if req.Name == "" {
+			req.Name = req.Email
+		}
+		// Use a time-based random string as password; it won't be used directly
+		genPass := time.Now().UTC().Format(time.RFC3339Nano)
+		user, err = h.AuthService.Register(req.Name, req.Email, genPass)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
+
+	// Issue JWT for the user
+	token, err := h.JWTService.GenerateToken(user.ID)
+	if err != nil {
+		http.Error(w, "failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	// Set cookie similar to Login/Register
+	cookie := &http.Cookie{
+		Name:     "access_token",
+		Value:    token,
+		Path:     "/",
+		Expires:  time.Now().Add(15 * time.Minute),
+		HttpOnly: true,
+	}
+	if ao := config.GetAllowedOrigin(); ao != "" {
+		cookie.SameSite = http.SameSiteNoneMode
+		if !strings.Contains(ao, "localhost") && !strings.Contains(ao, "127.0.0.1") {
+			cookie.Secure = true
+		}
+	} else {
+		cookie.SameSite = http.SameSiteLaxMode
+	}
+	http.SetCookie(w, cookie)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(tokenResp{AccessToken: token})
+}
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

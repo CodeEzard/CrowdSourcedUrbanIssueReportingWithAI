@@ -157,22 +157,15 @@
 
         const googleId = userData.sub;
         const googleName = userData.name;
+        const googleEmail = userData.email;
 
-        // Create virtual credentials for backend authentication
-        const virtualEmail = `google-${googleId}@google.com`;
-        const virtualPassword = googleId;
+        console.log('Attempting authentication with backend (google-login)...');
 
-        console.log('Attempting authentication with backend...');
-
-        // Try to register first
-        let authResponse = await fetch(`${API_BASE}/register`, {
+        // Single backend call that upserts user by email and returns JWT
+        const authResponse = await fetch(`${API_BASE}/google-login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            name: googleName, 
-            email: virtualEmail, 
-            password: virtualPassword
-          })
+          body: JSON.stringify({ name: googleName, email: googleEmail })
         });
 
         let data;
@@ -181,26 +174,6 @@
           data = await authResponse.json();
         } else {
           data = { error: await authResponse.text() };
-        }
-
-        // If user already exists (400 error), try login
-        if (!authResponse.ok && authResponse.status === 400) {
-          console.log('User already exists, attempting login...');
-          authResponse = await fetch(`${API_BASE}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              email: virtualEmail, 
-              password: virtualPassword
-            })
-          });
-          
-          const contentType2 = authResponse.headers.get('content-type');
-          if (contentType2 && contentType2.includes('application/json')) {
-            data = await authResponse.json();
-          } else {
-            data = { error: await authResponse.text() };
-          }
         }
 
         if (!authResponse.ok) {
@@ -212,6 +185,7 @@
           localStorage.setItem('jwt', data.access_token);
           localStorage.setItem('uc_user', googleName);
           localStorage.setItem('google_id', googleId);
+          localStorage.setItem('uc_email', googleEmail);
           // Persist backend base URL so other pages use the correct API origin
           localStorage.setItem('api_base', 'https://urban-civic-9oxw.onrender.com');
           

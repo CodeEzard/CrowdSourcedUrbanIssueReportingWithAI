@@ -149,6 +149,8 @@ func main() {
 	http.HandleFunc("/feed", feedHandler.ServeFeed)
 	http.HandleFunc("/login", authHandler.Login)
 	http.HandleFunc("/register", authHandler.Register)
+	// Social auth simplified endpoint
+	http.HandleFunc("/google-login", authHandler.GoogleLogin)
 	// ML endpoints (public - for frontend real-time predictions)
 	http.HandleFunc("/classify-image", mlHandler.ServeClassifyImage)
 	http.HandleFunc("/predict-urgency", mlHandler.ServePredictUrgency)
