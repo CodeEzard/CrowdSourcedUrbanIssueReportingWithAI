@@ -1,2 +1,10 @@
-# Ignore main.go with sensitive DB credentials
-backend/main.go
+# Ignore .env files (contain secrets, never commit)
+.env
+.env.local
+*.env
+
+# Ignore build artifacts and temporary files
+bin/
+bin_backend
+*.db
+.DS_Store

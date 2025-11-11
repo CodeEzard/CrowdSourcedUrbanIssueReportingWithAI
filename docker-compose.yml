@@ -16,9 +16,9 @@ services:
 
   backend:
     build:
-      # Use repo root so Dockerfile can access go.mod and frontend/
+      # Use repo root context with root Dockerfile
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
