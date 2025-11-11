@@ -219,7 +219,7 @@
       triggerGoogleSignIn();
     });
 
-    // Wait for Google SDK to load, then initialize
+    // Wait for Google SDK to load
     let googleLoadWaitCount = 0;
     const checkGoogleLoaded = setInterval(() => {
       googleLoadWaitCount++;
@@ -230,12 +230,13 @@
         google.accounts.id.initialize({
           client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
           callback: handleGoogleSignIn,
-          auto_select: false
+          auto_select: false,
+          ux_mode: 'popup'
         });
         console.log('Google Sign-In initialized successfully');
       } else if (googleLoadWaitCount > 50) {
         clearInterval(checkGoogleLoaded);
-        console.error('Google Sign-In SDK failed to load after 5 seconds');
+        console.error('Google Sign-In SDK failed to load');
       }
     }, 100);
   });
@@ -252,17 +253,35 @@
     // Store the name for later use
     window.googleSignInName = name;
 
-    // Trigger the Google Sign-In flow
+    // Trigger the Google Sign-In flow by rendering the button
     if (typeof google !== 'undefined' && google.accounts.id) {
-      console.log('Attempting to show Google Sign-In prompt...');
-      google.accounts.id.prompt((notification) => {
-        console.log('Prompt notification:', notification);
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          console.log('One Tap not displayed, trying alternative...');
-          // If One Tap is not shown, manually trigger the callback for testing
-          // In production, you might want to show a message to the user
+      console.log('Rendering Google Sign-In button...');
+      
+      // Render the official Google button
+      google.accounts.id.renderButton(
+        document.getElementById('google-signin-btn'),
+        { 
+          type: 'standard',
+          size: 'large',
+          theme: 'outline',
+          text: 'signin_with'
         }
-      });
+      );
+      
+      // Find and click the rendered button
+      setTimeout(() => {
+        const googleButton = document.querySelector('div[data-button-type="signin_with"] button') || 
+                            document.querySelector('[role="button"][data-button-type]') ||
+                            document.querySelector('button[type="button"]');
+        
+        if (googleButton) {
+          console.log('Found Google button, clicking...');
+          googleButton.click();
+        } else {
+          console.log('Google button not found, trying fallback...');
+          showError('Unable to initialize Google Sign-In. Please refresh the page and try again.');
+        }
+      }, 200);
     } else {
       console.error('Google SDK not available');
       showError('Google Sign-In not available. Please try again.');
