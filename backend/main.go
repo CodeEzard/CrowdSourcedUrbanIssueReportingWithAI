@@ -120,11 +120,22 @@ func main() {
 	fileServer := http.FileServer(fileSystem)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Serve login2.html for root (authentication landing page)
+		// At root, if user has a valid JWT cookie, serve index.html; otherwise show login2.html
 		if r.URL.Path == "/" || r.URL.Path == "" {
-			loginp := filepath.Join(frontendDir, "login2.html")
-			if _, err := os.Stat(loginp); err == nil {
-				http.ServeFile(w, r, loginp)
+			// default to login
+			target := filepath.Join(frontendDir, "login2.html")
+			// check cookie and validate token
+			if c, err := r.Cookie("access_token"); err == nil && c.Value != "" {
+				if _, err := jwtSvc.ValidateToken(c.Value); err == nil {
+					if idx := filepath.Join(frontendDir, "index.html"); true {
+						if _, err := os.Stat(idx); err == nil {
+							target = idx
+						}
+					}
+				}
+			}
+			if _, err := os.Stat(target); err == nil {
+				http.ServeFile(w, r, target)
 				return
 			}
 			http.NotFound(w, r)
