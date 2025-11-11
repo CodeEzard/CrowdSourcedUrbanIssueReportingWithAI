@@ -40,7 +40,7 @@ type Post struct {
 	UserID        uuid.UUID `gorm:"type:uuid;not null" json:"user_id"`
 	User          User      `gorm:"foreignKey:UserID" json:"user"`
 	Description   string    `json:"description,omitempty"`
-	Status        string    `gorm:"type:status;default:'open';not null" json:"status"`
+	Status        string    `gorm:"default:'open';not null" json:"status"`
 	Urgency       int       `gorm:"not null" json:"urgency"`
 	ClassifiedAs  string    `json:"classified_as,omitempty"`
 	Lat           float64   `gorm:"not null" json:"lat"`
