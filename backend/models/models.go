@@ -35,17 +35,19 @@ type Issue struct {
 
 type Post struct {
 	ID            uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4();primaryKey" json:"id"`
-	IssueID       uuid.UUID `gorm:"type:uuid;not null" json:"issue_id"`
+	IssueID       uuid.UUID `gorm:"type:uuid;not null;index:idx_post_issue" json:"issue_id"`
 	Issue         Issue     `gorm:"foreignKey:IssueID" json:"issue"`
-	UserID        uuid.UUID `gorm:"type:uuid;not null" json:"user_id"`
+	UserID        uuid.UUID `gorm:"type:uuid;not null;index:idx_post_user" json:"user_id"`
 	User          User      `gorm:"foreignKey:UserID" json:"user"`
 	Description   string    `json:"description,omitempty"`
-	Status        string    `gorm:"default:'open';not null" json:"status"`
-	Urgency       int       `gorm:"not null" json:"urgency"`
+	Status        string    `gorm:"default:'open';not null;index:idx_post_status" json:"status"`
+	Urgency       int       `gorm:"not null;index:idx_post_urgency" json:"urgency"`
 	ClassifiedAs  string    `json:"classified_as,omitempty"`
 	Lat           float64   `gorm:"not null" json:"lat"`
 	Lng           float64   `gorm:"not null" json:"lng"`
 	MediaURL      string    `gorm:"not null" json:"media_url"`
+	Comments      []Comment `gorm:"foreignKey:PostID" json:"comments"`
+	Upvotes       []Upvote  `gorm:"foreignKey:PostID" json:"upvotes"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }

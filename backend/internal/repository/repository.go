@@ -15,10 +15,18 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 	return &PostRepository{DB: db}
 }
 
-// Feed: Get posts ordered by timeline (newest first)
+// Feed: Get posts ordered by timeline (newest first), including comments and upvotes
 func (r *PostRepository) GetFeedPosts() ([]models.Post, error) {
 	var posts []models.Post
-	err := r.DB.Preload("User").Preload("Issue").Order("created_at DESC").Find(&posts).Error
+	err := r.DB.
+		Preload("User").
+		Preload("Issue").
+		Preload("Comments", func(db *gorm.DB) *gorm.DB {
+			return db.Preload("User").Order("created_at DESC")
+		}).
+		Preload("Upvotes").
+		Order("created_at DESC").
+		Find(&posts).Error
 	return posts, err
 }
 

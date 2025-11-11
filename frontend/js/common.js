@@ -62,6 +62,13 @@ async function fetchFeedFromServer() {
       // Backend post shape (models.Post) -> frontend issue shape
       const issue = p.issue || {};
       const user = p.user || {};
+      const comments = Array.isArray(p.comments) ? p.comments.map(c => ({
+        user: c.user?.name || c.user?.email || 'User',
+        text: c.content || '',
+        timestamp: c.created_at || new Date().toISOString()
+      })) : [];
+      const upvoteCount = Array.isArray(p.upvotes) ? p.upvotes.length : 0;
+      
       return {
         id: p.id || (p.ID || Date.now()),
         title: issue.name || issue.Name || p.title || 'Issue',
@@ -71,10 +78,10 @@ async function fetchFeedFromServer() {
         photo: p.media_url || p.mediaUrl || p.MediaURL || '',
         lat: p.lat || p.Lat || null,
         lon: p.lng || p.Lng || null,
-        votes: 0,
+        votes: upvoteCount,
         status: p.status || p.Status || 'open',
         reporter: user.name || user.email || (p.reporter || 'Unknown'),
-        comments: p.comments || [],
+        comments: comments,
         assignedAt: p.assigned_at || p.assignedAt || null
       };
     });
@@ -257,6 +264,7 @@ async function reverseGeocode(lat, lon) {
 // No storage synchronization needed for issues (server-backed)
 
 // Helper: post a comment to the backend. Requires Authorization header (jwt in localStorage).
+// Automatically refreshes the feed after posting.
 async function postComment(postID, content) {
   const token = localStorage.getItem('jwt');
   const headers = { 'Content-Type': 'application/json' };
@@ -270,10 +278,16 @@ async function postComment(postID, content) {
     const text = await resp.text().catch(() => '');
     throw new Error('Comment failed: ' + resp.status + ' ' + text);
   }
-  return resp.json();
+  const comment = await resp.json();
+  
+  // Refresh feed to get updated comments from server
+  await fetchFeedFromServer();
+  
+  return comment;
 }
 
 // Helper: toggle upvote for a post. Returns { upvoted: bool }
+// Automatically refreshes the feed after toggling upvote.
 async function postUpvote(postID) {
   const token = localStorage.getItem('jwt');
   const headers = { 'Content-Type': 'application/json' };
@@ -287,5 +301,10 @@ async function postUpvote(postID) {
     const text = await resp.text().catch(() => '');
     throw new Error('Upvote failed: ' + resp.status + ' ' + text);
   }
-  return resp.json();
+  const result = await resp.json();
+  
+  // Refresh feed to get updated upvote count from server
+  await fetchFeedFromServer();
+  
+  return result;
 }

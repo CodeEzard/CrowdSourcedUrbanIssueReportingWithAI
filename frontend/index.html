@@ -129,7 +129,9 @@
         <div><strong>Location:</strong> ${issue.location}</div>
         <div><strong>Description:</strong> ${issue.desc}</div>
         <div><strong>Status:</strong> <span class="status ${issue.status}">${issue.status}</span></div>
-        <div><strong>Votes:</strong> ${issue.votes}▲</div>
+        <div style="margin-top:12px">
+          <button class="btn" id="upvote-btn" data-issue-id="${issue.id}" style="margin-right:8px;">👍 Upvote (${issue.votes})</button>
+        </div>
         <div><strong>Reported by:</strong> ${issue.reporter}</div>
         ${issue.assignedAt ? `<div><strong>Assigned:</strong> ${new Date(issue.assignedAt).toLocaleString()}</div>` : ''}
       `;
@@ -139,6 +141,27 @@
       qs('#issue-modal').classList.add('active');
       qs('#comment-input').focus();
       qs('#comment-submit').dataset.issueId = issue.id;
+      
+      // Add upvote button listener
+      qs('#upvote-btn').addEventListener('click', async () => {
+        const jwt = localStorage.getItem('jwt');
+        if (!jwt) {
+          showToast('You must be logged in to upvote', 'error');
+          window.location.href = 'login2.html';
+          return;
+        }
+        try {
+          const resp = await postUpvote(String(issue.id));
+          const updatedIssue = issues.find(i => String(i.id) === String(issue.id));
+          if (updatedIssue) {
+            showToast(resp.upvoted ? 'Upvoted!' : 'Upvote removed');
+            showModal(updatedIssue);
+          }
+        } catch (err) {
+          console.warn('Failed to upvote:', err);
+          showToast('Failed to upvote: ' + (err.message || ''), 'error');
+        }
+      });
     }
 
     qs('#modal-close').addEventListener('click', () => {
@@ -161,16 +184,20 @@
       const comment = qs('#comment-input').value.trim();
       const issueId = qs('#comment-submit').dataset.issueId; // support UUIDs
       if (!comment || !issueId) return;
+      
+      // Check auth first
+      const jwt = localStorage.getItem('jwt');
+      if (!jwt) {
+        showToast('You must be logged in to comment', 'error');
+        window.location.href = 'login2.html';
+        return;
+      }
+      
       try {
         const resp = await postComment(String(issueId), comment);
+        // The feed has already been refreshed by postComment()
         const issue = issues.find(i => String(i.id) === String(issueId));
         if (issue) {
-          const commentObj = {
-            user: resp.user?.name || currentUser,
-            text: resp.content || comment,
-            timestamp: resp.created_at || new Date().toISOString()
-          };
-          issue.comments.push(commentObj);
           showToast('Comment added!');
           showModal(issue);
         }
