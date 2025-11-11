@@ -158,14 +158,14 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   const API_BASE = window.location.origin;
+  let isProcessingSignIn = false;
 
-  // Check if user is already logged in - redirect to home
+  // Initialize Google Sign-In when page loads
   window.addEventListener('DOMContentLoaded', () => {
-    const jwt = localStorage.getItem('jwt');
-    if (jwt) {
-      window.location.href = 'index.html';
+    // Only init if we're actually on the login page
+    if (window.location.pathname.includes('login')) {
+      initializeGoogleSignIn();
     }
-    initializeGoogleSignIn();
   });
 
   function initializeGoogleSignIn() {
@@ -192,6 +192,13 @@
   }
 
   async function handleGoogleSignIn(response) {
+    // Prevent double-processing
+    if (isProcessingSignIn) {
+      console.log('Sign-in already in progress');
+      return;
+    }
+    isProcessingSignIn = true;
+
     const googleToken = response.credential;
     const btn = document.getElementById('google-signin-btn');
     btn.disabled = true;
@@ -205,6 +212,8 @@
       const googleId = decoded.sub; // Google's unique user ID
       const name = decoded.name;
       const email = decoded.email;
+
+      console.log('Google Sign-In:', { name, googleId });
 
       // Use Google ID as email for backend (unique identifier)
       // Create a virtual email from Google ID
@@ -227,6 +236,7 @@
 
       // If user already exists, try login
       if (!response2.ok && response2.status === 400) {
+        console.log('User already exists, attempting login...');
         response2 = await fetch(`${API_BASE}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -240,7 +250,7 @@
       }
 
       if (!response2.ok) {
-        throw new Error(data.error || 'Authentication failed');
+        throw new Error(data.error || 'Authentication failed: ' + response2.status);
       }
 
       if (data.access_token) {
@@ -249,6 +259,7 @@
         localStorage.setItem('uc_user', name);
         localStorage.setItem('google_id', googleId);
         
+        console.log('Authentication successful, redirecting...');
         showSuccess(`Welcome, ${name}! Redirecting...`);
         
         // Redirect to home after brief delay
@@ -271,6 +282,7 @@
         </svg>
         Sign in with Google
       `;
+      isProcessingSignIn = false;
     }
   }
 
