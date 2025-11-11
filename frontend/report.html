@@ -168,7 +168,7 @@
       // POST to backend /report. Failures are surfaced to the user. We no
       // longer persist reports in localStorage — the backend is the canonical store.
       try {
-        const token = "23c9257ae3e745bcbe5fe7aadebc814e";
+        const token = localStorage.getItem('jwt');
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = 'Bearer ' + token;
         const resp = await fetch('/report', { method: 'POST', headers, body: JSON.stringify(payload), credentials: 'same-origin' });
