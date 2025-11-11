@@ -4,6 +4,13 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 COPY . ./
+# Diagnostic: confirm main.go exists and has package main + func main
+RUN echo "=== Checking /src/backend ===" && \
+    ls -la /src/backend/ | grep -E "main|router" && \
+    echo "=== Checking main.go content ===" && \
+    head -30 /src/backend/main.go && \
+    echo "=== Checking for other main packages ===" && \
+    find /src -name "*.go" -type f -exec grep -l "^package main$" {} \;
 # Build the backend - try without mod=readonly to allow Go full flexibility
 RUN CGO_ENABLED=0 GOOS=linux go build -v -o /bin/backend ./backend
 
