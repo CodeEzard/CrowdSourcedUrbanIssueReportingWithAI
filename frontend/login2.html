@@ -192,10 +192,8 @@
           console.log('Authentication successful!');
           console.log('JWT stored, redirecting to index.html...');
           
-          // Redirect after 1 second
-          setTimeout(() => {
-            window.location.href = "index.html";
-          }, 1000);
+          // Redirect immediately to home; use replace to avoid back-navigation to login
+          window.location.replace("index.html");
         } else {
           throw new Error('No access token received from backend');
         }
@@ -219,7 +217,9 @@
             client_id: '810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com',
             callback: handleCredentialResponse,
             auto_select: false,
-            // Avoid relying on browser FedCM if it's disabled; fall back to popup flow
+            // Force redirect flow to avoid FedCM/popup restrictions
+            ux_mode: 'redirect',
+            login_uri: 'https://urban-civic-9oxw.onrender.com/google-login',
             use_fedcm_for_prompt: false
           });
           console.log('Google Sign-In SDK initialized');
@@ -248,8 +248,9 @@
 
     <div id="g_id_onload"
       data-client_id="810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com"
-      data-callback="handleCredentialResponse"
-      data-ux_mode="popup">
+      data-login_uri="https://urban-civic-9oxw.onrender.com/google-login"
+      data-ux_mode="redirect"
+      data-auto_prompt="false">
     </div>
 
     <div class="g_id_signin"

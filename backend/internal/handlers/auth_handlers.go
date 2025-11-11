@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/base64"
 	"time"
 
 	config "crowdsourcedurbanissuereportingwithai/backend/configs"
@@ -53,14 +54,62 @@ func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Two forms accepted:
+	// 1) application/json: { name, email }
+	// 2) form POST from Google redirect: credential=<JWT>
 	var req googleLoginReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if strings.TrimSpace(req.Email) == "" {
-		http.Error(w, "email is required", http.StatusBadRequest)
-		return
+	ct := r.Header.Get("Content-Type")
+	if strings.Contains(ct, "application/json") {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
+		if strings.TrimSpace(req.Email) == "" {
+			http.Error(w, "email is required", http.StatusBadRequest)
+			return
+		}
+	} else {
+		// Assume form post
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "invalid form", http.StatusBadRequest)
+			return
+		}
+		if idToken := r.FormValue("credential"); idToken != "" {
+			// Decode JWT payload (unverified) to extract email/name for demo purposes
+			// Format: header.payload.signature (base64url)
+			parts := strings.Split(idToken, ".")
+			if len(parts) >= 2 {
+				payloadB64 := parts[1]
+				// base64url decode
+				payloadB64 = strings.ReplaceAll(payloadB64, "-", "+")
+				payloadB64 = strings.ReplaceAll(payloadB64, "_", "/")
+				// add padding
+				switch len(payloadB64) % 4 {
+				case 2:
+					payloadB64 += "=="
+				case 3:
+					payloadB64 += "="
+				}
+				if decoded, err := base64.StdEncoding.DecodeString(payloadB64); err == nil {
+					var claims map[string]any
+					if json.Unmarshal(decoded, &claims) == nil {
+						if v, ok := claims["email"].(string); ok {
+							req.Email = v
+						}
+						if v, ok := claims["name"].(string); ok {
+							req.Name = v
+						}
+					}
+				}
+			}
+			if strings.TrimSpace(req.Email) == "" {
+				http.Error(w, "failed to extract email from credential", http.StatusBadRequest)
+				return
+			}
+		} else {
+			http.Error(w, "missing credential", http.StatusBadRequest)
+			return
+		}
 	}
 
 	// Try to find existing user; if not found, create one with a random password
@@ -104,8 +153,15 @@ func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		cookie.SameSite = http.SameSiteLaxMode
 	}
 	http.SetCookie(w, cookie)
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tokenResp{AccessToken: token})
+	// If this was a JSON/XHR request, return JSON. If it was a redirect form
+	// submission from Google, redirect to the app.
+	if strings.Contains(ct, "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(tokenResp{AccessToken: token})
+		return
+	}
+	// Redirect to index within the same server (serving frontend)
+	http.Redirect(w, r, "/index.html", http.StatusFound)
 }
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
