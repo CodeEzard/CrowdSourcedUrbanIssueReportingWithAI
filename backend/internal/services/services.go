@@ -36,7 +36,7 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 		// non-fatal: log and continue with provided urgency
 		// PredictUrgency logs details; we don't block reporting if ML fails.
 	}
-	
+
 	// If an image classification API is configured, attempt to classify the image.
 	classifiedAs := ""
 	if classified, err := ClassifyImage(mediaURL); err == nil && classified != "" {
@@ -45,7 +45,7 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 		// non-fatal: log and continue without classification
 		// ClassifyImage logs details; we don't block reporting if classification fails.
 	}
-	
+
 	return s.PostRepo.ReportIssueViaPost(uid.String(), issueName, issueDesc, issueCat, postDesc, status, urgency, lat, lng, mediaURL, classifiedAs)
 }
 func (s *FeedService) GetFeed() ([]models.Post, error) {
@@ -66,13 +66,13 @@ func (s *ReportService) AddComment(userID, postID, content string) (*models.Comm
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// IMPORTANT: Recalculate post urgency based on this new comment
 	if err := s.UpdatePostUrgencyFromComments(pid); err != nil {
 		// Non-fatal: log but don't fail the comment creation
 		log.Printf("warning: failed to update post urgency after comment: %v", err)
 	}
-	
+
 	return comment, nil
 }
 

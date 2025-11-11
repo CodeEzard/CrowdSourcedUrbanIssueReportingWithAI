@@ -11,78 +11,78 @@ import (
 type UrgencyLevel string
 
 const (
-	Low       UrgencyLevel = "low"
-	Moderate  UrgencyLevel = "moderate"
-	Critical  UrgencyLevel = "critical"
+	Low      UrgencyLevel = "low"
+	Moderate UrgencyLevel = "moderate"
+	Critical UrgencyLevel = "critical"
 )
 
 // UrgencyScore represents the score for a comment (0.0 - 3.0)
 type UrgencyScore struct {
-	Score       float64
-	Level       UrgencyLevel
-	Confidence  float64 // 0.0 - 1.0
+	Score      float64
+	Level      UrgencyLevel
+	Confidence float64 // 0.0 - 1.0
 }
 
 // urgencyKeywords maps keywords to their urgency multiplier
 var urgencyKeywords = map[string]float64{
 	// Critical indicators (3.0x)
-	"dangerous":       3.0,
-	"critical":       3.0,
-	"emergency":      3.0,
-	"severe":         3.0,
-	"urgent":         3.0,
-	"fatal":          3.0,
-	"death":          3.0,
-	"dying":          3.0,
-	"collapsed":      3.0,
-	"collapse":       3.0,
-	"broken":         2.5,
-	"destroyed":      2.5,
-	"accident":       2.5,
-	"injury":         2.5,
-	"injured":        2.5,
-	"bleeding":       3.0,
-	"fire":           3.0,
-	"explod":         3.0,
-	"hazard":         2.5,
-	"gas":            2.5,
+	"dangerous": 3.0,
+	"critical":  3.0,
+	"emergency": 3.0,
+	"severe":    3.0,
+	"urgent":    3.0,
+	"fatal":     3.0,
+	"death":     3.0,
+	"dying":     3.0,
+	"collapsed": 3.0,
+	"collapse":  3.0,
+	"broken":    2.5,
+	"destroyed": 2.5,
+	"accident":  2.5,
+	"injury":    2.5,
+	"injured":   2.5,
+	"bleeding":  3.0,
+	"fire":      3.0,
+	"explod":    3.0,
+	"hazard":    2.5,
+	"gas":       2.5,
 
 	// Moderate indicators (1.5x - 2.4x)
-	"concern":        1.8,
-	"serious":        2.0,
-	"problem":        1.5,
-	"issue":          1.2,
-	"needs":          1.5,
-	"needed":         1.5,
-	"repair":         1.8,
-	"damage":         2.0,
-	"damaged":        2.0,
-	"flood":          2.2,
-	"flooding":       2.2,
-	"waterlog":       2.2,
-	"crack":          1.6,
-	"hole":           1.5,
-	"pothole":        1.8,
-	"danger":         2.3,
-	"risk":           2.0,
-	"unsafe":         2.2,
-	"sick":           2.0,
-	"illness":        2.0,
-	"disease":        2.0,
-	"spread":         2.0,
+	"concern":  1.8,
+	"serious":  2.0,
+	"problem":  1.5,
+	"issue":    1.2,
+	"needs":    1.5,
+	"needed":   1.5,
+	"repair":   1.8,
+	"damage":   2.0,
+	"damaged":  2.0,
+	"flood":    2.2,
+	"flooding": 2.2,
+	"waterlog": 2.2,
+	"crack":    1.6,
+	"hole":     1.5,
+	"pothole":  1.8,
+	"danger":   2.3,
+	"risk":     2.0,
+	"unsafe":   2.2,
+	"sick":     2.0,
+	"illness":  2.0,
+	"disease":  2.0,
+	"spread":   2.0,
 
 	// Low indicators (0.5x - 1.4x)
-	"minor":          0.8,
-	"small":          0.7,
-	"slight":         0.7,
-	"bit":            0.6,
-	"little":         0.6,
-	"could":          0.9,
-	"might":          0.9,
-	"possible":       0.9,
-	"maybe":          0.8,
-	"suggests":       1.0,
-	"seems":          0.9,
+	"minor":    0.8,
+	"small":    0.7,
+	"slight":   0.7,
+	"bit":      0.6,
+	"little":   0.6,
+	"could":    0.9,
+	"might":    0.9,
+	"possible": 0.9,
+	"maybe":    0.8,
+	"suggests": 1.0,
+	"seems":    0.9,
 }
 
 // CalculateCommentUrgency analyzes a comment string and returns an urgency score
@@ -101,7 +101,7 @@ func CalculateCommentUrgency(commentText string) UrgencyScore {
 	// Calculate score from keywords
 	for _, word := range words {
 		// Remove punctuation for matching
-		cleanWord := strings.Trim(word, ".,!?;:\"'()[]{}") 
+		cleanWord := strings.Trim(word, ".,!?;:\"'()[]{}")
 
 		// Check for direct matches
 		if multiplier, found := urgencyKeywords[cleanWord]; found {

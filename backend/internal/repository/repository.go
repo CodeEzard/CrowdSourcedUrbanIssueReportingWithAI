@@ -137,4 +137,3 @@ func (r *PostRepository) GetPost(postID uuid.UUID) (*models.Post, error) {
 	}
 	return &post, nil
 }
-

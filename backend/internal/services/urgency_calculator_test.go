@@ -6,11 +6,11 @@ import (
 
 func TestCalculateCommentUrgency(t *testing.T) {
 	tests := []struct {
-		name           string
-		comment        string
-		expectedLevel  UrgencyLevel
-		minScore       float64
-		maxScore       float64
+		name          string
+		comment       string
+		expectedLevel UrgencyLevel
+		minScore      float64
+		maxScore      float64
 	}{
 		{
 			name:          "Critical urgency - dangerous",
@@ -77,9 +77,9 @@ func TestCalculateCommentUrgency(t *testing.T) {
 
 func TestCategorizeUrgency(t *testing.T) {
 	tests := []struct {
-		name           string
-		score          float64
-		expectedLevel  UrgencyLevel
+		name          string
+		score         float64
+		expectedLevel UrgencyLevel
 	}{
 		{
 			name:          "Low threshold",
@@ -125,10 +125,10 @@ func TestCategorizeUrgency(t *testing.T) {
 
 func TestCalculateAggregateUrgency(t *testing.T) {
 	tests := []struct {
-		name              string
-		postUrgency       int
-		commentScores     []float64
-		expectedUrgency   int
+		name            string
+		postUrgency     int
+		commentScores   []float64
+		expectedUrgency int
 	}{
 		{
 			name:            "No comments - post stays same",

@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Urban Civic</title>
+  <title>Login - AI Internship Recommender</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -79,123 +80,16 @@
 
     .login-box h2 {
       margin-bottom: 10px;
-      font-size: 2rem;
     }
 
     .login-box p {
       color: #bbb;
       margin-bottom: 25px;
-      font-size: 1rem;
-    }
-
-    .form-group {
-      margin-bottom: 15px;
-      text-align: left;
-    }
-
-    .form-group label {
-      display: block;
-      color: #ddd;
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-      font-weight: 500;
-    }
-
-    .form-group input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #555;
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      font-size: 1rem;
-      box-sizing: border-box;
-    }
-
-    .form-group input::placeholder {
-      color: #999;
-    }
-
-    .form-group input:focus {
-      outline: none;
-      border-color: #ff6a00;
-      background: rgba(255, 255, 255, 0.15);
     }
 
     .g_id_signin {
       display: flex;
       justify-content: center;
-    }
-
-    .google-btn {
-      width: 100%;
-      padding: 14px;
-      margin-top: 20px;
-      background: #fff;
-      border: none;
-      border-radius: 8px;
-      color: #333;
-      font-weight: bold;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .google-btn:hover {
-      background: #f0f0f0;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(255, 106, 0, 0.3);
-    }
-
-    .google-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .google-icon {
-      width: 20px;
-      height: 20px;
-    }
-
-    .error-message {
-      color: #ff4444;
-      font-size: 1rem;
-      margin-top: 15px;
-      display: none;
-      background: rgba(255, 68, 68, 0.1);
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #ff4444;
-    }
-
-    .success-message {
-      color: #44ff44;
-      font-size: 1rem;
-      margin-top: 15px;
-      display: none;
-      background: rgba(68, 255, 68, 0.1);
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #44ff44;
-    }
-
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #333;
-      border-radius: 50%;
-      border-top: 3px solid #ff6a00;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
     }
 
     footer {
@@ -220,176 +114,175 @@
       color: #fff;
     }
   </style>
+  <script>
+    // using explicit backend origin instead of window.location.origin
+    const API_BASE = 'https://urban-civic-9oxw.onrender.com';
+    let isProcessingSignIn = false;
+
+    // Decode JWT token
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        console.error('Failed to parse JWT:', e);
+        return null;
+      }
+    }
+
+    // Google Sign-In callback - connects to backend
+    async function handleCredentialResponse(response) {
+      console.log("Google ID Token received:", response.credential);
+
+      // Prevent double processing
+      if (isProcessingSignIn) {
+        console.log('Sign-in already in progress');
+        return;
+      }
+      isProcessingSignIn = true;
+
+      try {
+        const googleToken = response.credential;
+        const userData = parseJwt(googleToken);
+        
+        if (!userData) {
+          throw new Error("Failed to decode token.");
+        }
+
+        console.log("Decoded User Info:", userData);
+
+        const googleId = userData.sub;
+        const googleName = userData.name;
+
+        // Create virtual credentials for backend authentication
+        const virtualEmail = `google-${googleId}@google.com`;
+        const virtualPassword = googleId;
+
+        console.log('Attempting authentication with backend...');
+
+        // Try to register first
+        let authResponse = await fetch(`${API_BASE}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            name: googleName, 
+            email: virtualEmail, 
+            password: virtualPassword
+          })
+        });
+
+        let data;
+        const contentType = authResponse.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await authResponse.json();
+        } else {
+          data = { error: await authResponse.text() };
+        }
+
+        // If user already exists (400 error), try login
+        if (!authResponse.ok && authResponse.status === 400) {
+          console.log('User already exists, attempting login...');
+          authResponse = await fetch(`${API_BASE}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: virtualEmail, 
+              password: virtualPassword
+            })
+          });
+          
+          const contentType2 = authResponse.headers.get('content-type');
+          if (contentType2 && contentType2.includes('application/json')) {
+            data = await authResponse.json();
+          } else {
+            data = { error: await authResponse.text() };
+          }
+        }
+
+        if (!authResponse.ok) {
+          throw new Error(data.error || data || 'Authentication failed');
+        }
+
+        if (data.access_token) {
+          // Store JWT and user info in localStorage
+          localStorage.setItem('jwt', data.access_token);
+          localStorage.setItem('uc_user', googleName);
+          localStorage.setItem('google_id', googleId);
+          
+          console.log('Authentication successful!');
+          console.log('JWT stored, redirecting to index.html...');
+          
+          // Redirect after 1 second
+          setTimeout(() => {
+            window.location.href = "index.html";
+          }, 1000);
+        } else {
+          throw new Error('No access token received from backend');
+        }
+      } catch (error) {
+        console.error('Sign-in error:', error);
+        alert('Login failed: ' + error.message);
+        isProcessingSignIn = false;
+      }
+    }
+
+    // Initialize Google Sign-In SDK
+    window.addEventListener('load', () => {
+      let googleLoadWaitCount = 0;
+      const checkGoogleLoaded = setInterval(() => {
+        googleLoadWaitCount++;
+        
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+          clearInterval(checkGoogleLoaded);
+          
+          google.accounts.id.initialize({
+            client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
+            callback: handleCredentialResponse,
+            auto_select: false
+          });
+          console.log('Google Sign-In SDK initialized');
+        } else if (googleLoadWaitCount > 50) {
+          clearInterval(checkGoogleLoaded);
+          console.error('Google Sign-In SDK failed to load');
+        }
+      }, 100);
+    });
+  </script>
+
 </head>
 <body>
 
 <canvas id="bubble-canvas"></canvas>
 
 <nav>
-  <div class="logo">Urban<span style="color:#ee0979">Civic</span></div>
+  <div class="logo">AI Internship<span style="color:#ee0979">Match</span></div>
+  <button class="btn">Register</button>
 </nav>
 
 <div class="login-container">
   <div class="login-box">
-    <h2>Urban Civic</h2>
-    <p>Report and resolve civic issues in your community</p>
-    
-    <form id="login-form">
-      <div class="form-group">
-        <label for="name-input">Your Name</label>
-        <input type="text" id="name-input" placeholder="Enter your name" required aria-label="Your name">
-      </div>
-      <button type="submit" id="google-signin-btn" class="google-btn">
-        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
-        Sign in with Google
-      </button>
-    </form>
+    <h2>Welcome Back</h2>
+    <p>Login to continue your AI internship journey</p>
 
-    <div class="error-message" id="error-message"></div>
-    <div class="success-message" id="success-message"></div>
+    <div id="g_id_onload"
+      data-client_id="810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse">
+    </div>
+
+    <div class="g_id_signin"
+      data-type="standard"
+      data-shape="rectangular"
+      data-theme="outline"
+      data-text="sign_in_with"
+      data-size="large">
+    </div>
   </div>
 </div>
 
-<footer>
-  <div>&copy; 2024 Urban Civic. All rights reserved.</div>
-  <div>
-    <a href="#">Privacy Policy</a>
-    <a href="#">Terms of Service</a>
-  </div>
-</footer>
-
-<script>
-  const API_BASE = window.location.origin;
-  let isProcessingSignIn = false;
-
-  // Decode JWT token
-  function parseJwt(token) {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    } catch (e) {
-      console.error('Failed to parse JWT:', e);
-      return null;
-    }
-  }
-
-  // Google Sign-In callback
-  function handleCredentialResponse(response) {
-    console.log("Google ID Token:", response.credential);
-
-    const userData = parseJwt(response.credential);
-    if (userData) {
-      console.log("Decoded User Info:", userData);
-    } else {
-      console.log("Failed to decode token.");
-    }
-
-    // Redirect to index.html after 1 second
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 1000);
-  }
-
-  // Initialize when DOM is ready
-  document.addEventListener('DOMContentLoaded', () => {
-    // Set up form submission to trigger Google Sign-In
-    const form = document.getElementById('login-form');
-    const button = document.getElementById('google-signin-btn');
-    
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const nameInput = document.getElementById('name-input');
-      const name = nameInput.value.trim();
-
-      if (!name) {
-        showError('Please enter your name');
-        return;
-      }
-
-      // Disable button to prevent multiple clicks
-      button.disabled = true;
-      triggerGoogleSignIn();
-      // Re-enable after a delay if not processing
-      setTimeout(() => {
-        if (!isProcessingSignIn) {
-          button.disabled = false;
-        }
-      }, 1000);
-    });
-
-    // Wait for Google SDK to load
-    let googleLoadWaitCount = 0;
-    const checkGoogleLoaded = setInterval(() => {
-      googleLoadWaitCount++;
-      
-      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
-        clearInterval(checkGoogleLoaded);
-        
-        google.accounts.id.initialize({
-          client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
-          callback: handleCredentialResponse,
-          auto_select: false
-        });
-        console.log('Google Sign-In initialized successfully');
-      } else if (googleLoadWaitCount > 50) {
-        clearInterval(checkGoogleLoaded);
-        console.error('Google Sign-In SDK failed to load');
-      }
-    }, 100);
-  });
-
-  function triggerGoogleSignIn() {
-    // Prevent multiple sign-in attempts
-    if (isProcessingSignIn) {
-      console.log('Sign-in already in progress');
-      return;
-    }
-
-    // Trigger the Google Sign-In flow
-    if (typeof google !== 'undefined' && google.accounts.id) {
-      console.log('Triggering Google Sign-In prompt...');
-      
-      try {
-        // Show the One Tap UI or sign-in prompt
-        google.accounts.id.prompt((notification) => {
-          console.log('Prompt response:', notification);
-        });
-      } catch (error) {
-        console.error('Error triggering sign-in:', error);
-        showError('Failed to trigger Google Sign-In');
-      }
-    } else {
-      console.error('Google SDK not available');
-      showError('Google Sign-In not available. Please try again.');
-    }
-  }
-
-  function showError(message) {
-    const el = document.getElementById('error-message');
-    el.textContent = message;
-    el.style.display = 'block';
-    setTimeout(() => {
-      el.style.display = 'none';
-    }, 5000);
-  }
-
-  function showSuccess(message) {
-    const el = document.getElementById('success-message');
-    el.textContent = message;
-    el.style.display = 'block';
-  }
-</script>
-
-<!-- Bubble Canvas Animation -->
 <script>
   const canvas = document.getElementById("bubble-canvas");
   const ctx = canvas.getContext("2d");
