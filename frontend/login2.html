@@ -195,6 +195,21 @@
   const API_BASE = window.location.origin;
   let isProcessingSignIn = false;
 
+  // Decode JWT token
+  function parseJwt(token) {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error('Failed to parse JWT:', e);
+      return null;
+    }
+  }
+
   // Initialize when DOM is ready
   document.addEventListener('DOMContentLoaded', () => {
     // Set up form submission to trigger Google Sign-In
@@ -204,18 +219,25 @@
       triggerGoogleSignIn();
     });
 
-    // Wait a bit for Google SDK to load, then initialize
-    setTimeout(() => {
-      if (typeof google !== 'undefined') {
+    // Wait for Google SDK to load, then initialize
+    let googleLoadWaitCount = 0;
+    const checkGoogleLoaded = setInterval(() => {
+      googleLoadWaitCount++;
+      
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+        clearInterval(checkGoogleLoaded);
+        
         google.accounts.id.initialize({
           client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
-          callback: handleGoogleSignIn
+          callback: handleGoogleSignIn,
+          auto_select: false
         });
-        console.log('Google Sign-In initialized');
-      } else {
-        console.error('Google Sign-In SDK not loaded');
+        console.log('Google Sign-In initialized successfully');
+      } else if (googleLoadWaitCount > 50) {
+        clearInterval(checkGoogleLoaded);
+        console.error('Google Sign-In SDK failed to load after 5 seconds');
       }
-    }, 1000);
+    }, 100);
   });
 
   function triggerGoogleSignIn() {
@@ -232,21 +254,15 @@
 
     // Trigger the Google Sign-In flow
     if (typeof google !== 'undefined' && google.accounts.id) {
-      google.accounts.id.renderButton(
-        document.getElementById('google-signin-btn'),
-        { 
-          type: 'standard',
-          size: 'large',
-          text: 'signin_with',
-          theme: 'outline',
-          locale: 'en_US'
+      console.log('Attempting to show Google Sign-In prompt...');
+      google.accounts.id.prompt((notification) => {
+        console.log('Prompt notification:', notification);
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.log('One Tap not displayed, trying alternative...');
+          // If One Tap is not shown, manually trigger the callback for testing
+          // In production, you might want to show a message to the user
         }
-      );
-      // Click the rendered button to trigger sign-in
-      setTimeout(() => {
-        const btn = document.querySelector('[data-button-type="signin_with"]');
-        if (btn) btn.click();
-      }, 100);
+      });
     } else {
       console.error('Google SDK not available');
       showError('Google Sign-In not available. Please try again.');
@@ -266,10 +282,16 @@
 
     try {
       const googleToken = response.credential;
+      console.log("Google ID Token:", googleToken);
       
-      // Decode JWT to get user info
-      const payload = googleToken.split('.')[1];
-      const decoded = JSON.parse(atob(payload));
+      // Decode JWT to get user info using the parseJwt helper
+      const decoded = parseJwt(googleToken);
+      
+      if (!decoded) {
+        throw new Error('Failed to decode Google token');
+      }
+
+      console.log("Decoded User Info:", decoded);
       
       const googleId = decoded.sub;
       const googleName = decoded.name;
@@ -326,9 +348,10 @@
         console.log('Authentication successful, redirecting...');
         showSuccess(`Welcome, ${nameToUse}! Redirecting...`);
         
+        // Redirect to index.html after 1 second
         setTimeout(() => {
           window.location.href = 'index.html';
-        }, 1500);
+        }, 1000);
       } else {
         throw new Error('No token received');
       }
