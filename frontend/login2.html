@@ -232,15 +232,21 @@
 
     // Trigger the Google Sign-In flow
     if (typeof google !== 'undefined' && google.accounts.id) {
-      google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // If prompt is not shown, trigger the One Tap flow
-          google.accounts.id.renderButton(
-            document.getElementById('google-signin-btn'),
-            { type: 'standard', size: 'large', text: 'signin' }
-          );
+      google.accounts.id.renderButton(
+        document.getElementById('google-signin-btn'),
+        { 
+          type: 'standard',
+          size: 'large',
+          text: 'signin_with',
+          theme: 'outline',
+          locale: 'en_US'
         }
-      });
+      );
+      // Click the rendered button to trigger sign-in
+      setTimeout(() => {
+        const btn = document.querySelector('[data-button-type="signin_with"]');
+        if (btn) btn.click();
+      }, 100);
     } else {
       console.error('Google SDK not available');
       showError('Google Sign-In not available. Please try again.');
