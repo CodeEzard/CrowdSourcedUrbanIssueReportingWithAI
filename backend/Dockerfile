@@ -10,7 +10,7 @@ RUN go env && go list -m all
 # Build the backend with verbose output so CI logs show which packages are compiled
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-RUN go build -v -o /bin/backend ./
+RUN go build -v -o /bin/backend .
 
 FROM alpine:3.18
 RUN apk add --no-cache ca-certificates
