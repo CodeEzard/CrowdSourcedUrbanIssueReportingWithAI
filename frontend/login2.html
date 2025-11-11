@@ -62,6 +62,35 @@
       margin-bottom: 30px;
       font-size: 1rem;
     }
+    .form-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      color: #ddd;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #555;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .form-group input::placeholder {
+      color: #999;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #ff6a00;
+      background: rgba(255, 255, 255, 0.15);
+    }
     .google-btn {
       width: 100%;
       padding: 14px;
@@ -140,15 +169,21 @@
     <h2>Urban Civic</h2>
     <p>Report and resolve civic issues in your community</p>
     
-    <button id="google-signin-btn" class="google-btn">
-      <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-      Sign in with Google
-    </button>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="name-input">Your Name</label>
+        <input type="text" id="name-input" placeholder="Enter your name" required aria-label="Your name">
+      </div>
+      <button type="submit" id="google-signin-btn" class="google-btn">
+        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign in with Google
+      </button>
+    </form>
 
     <div class="error-message" id="error-message"></div>
     <div class="success-message" id="success-message"></div>
@@ -160,35 +195,56 @@
   const API_BASE = window.location.origin;
   let isProcessingSignIn = false;
 
-  // Initialize Google Sign-In when page loads
-  window.addEventListener('DOMContentLoaded', () => {
-    // Only init if we're actually on the login page
-    if (window.location.pathname.includes('login')) {
-      initializeGoogleSignIn();
-    }
-  });
-
-  function initializeGoogleSignIn() {
-    google.accounts.id.initialize({
-      client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
-      callback: handleGoogleSignIn,
-      auto_select: false,
-      itp_support: true
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    // Set up form submission to trigger Google Sign-In
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      triggerGoogleSignIn();
     });
 
-    // Render the Google Sign-In button
-    google.accounts.id.renderButton(
-      document.getElementById('google-signin-btn'),
-      { 
-        type: 'standard',
-        size: 'large',
-        text: 'signin',
-        locale: 'en',
-        theme: 'filled_white',
-        logo_alignment: 'center',
-        width: '100%'
+    // Wait a bit for Google SDK to load, then initialize
+    setTimeout(() => {
+      if (typeof google !== 'undefined') {
+        google.accounts.id.initialize({
+          client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
+          callback: handleGoogleSignIn
+        });
+        console.log('Google Sign-In initialized');
+      } else {
+        console.error('Google Sign-In SDK not loaded');
       }
-    );
+    }, 1000);
+  });
+
+  function triggerGoogleSignIn() {
+    const nameInput = document.getElementById('name-input');
+    const name = nameInput.value.trim();
+
+    if (!name) {
+      showError('Please enter your name');
+      return;
+    }
+
+    // Store the name for later use
+    window.googleSignInName = name;
+
+    // Trigger the Google Sign-In flow
+    if (typeof google !== 'undefined' && google.accounts.id) {
+      google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          // If prompt is not shown, trigger the One Tap flow
+          google.accounts.id.renderButton(
+            document.getElementById('google-signin-btn'),
+            { type: 'standard', size: 'large', text: 'signin' }
+          );
+        }
+      });
+    } else {
+      console.error('Google SDK not available');
+      showError('Google Sign-In not available. Please try again.');
+    }
   }
 
   async function handleGoogleSignIn(response) {
@@ -199,45 +255,47 @@
     }
     isProcessingSignIn = true;
 
-    const googleToken = response.credential;
     const btn = document.getElementById('google-signin-btn');
     btn.disabled = true;
-    btn.innerHTML = '<div class="loading"></div> Signing in...';
 
     try {
-      // Decode JWT to get user info (without verification - for demo)
+      const googleToken = response.credential;
+      
+      // Decode JWT to get user info
       const payload = googleToken.split('.')[1];
       const decoded = JSON.parse(atob(payload));
       
-      const googleId = decoded.sub; // Google's unique user ID
-      const name = decoded.name;
-      const email = decoded.email;
+      const googleId = decoded.sub;
+      const googleName = decoded.name;
+      const googleEmail = decoded.email;
 
-      console.log('Google Sign-In:', { name, googleId });
+      // Use name from form if provided, otherwise use Google name
+      const nameToUse = window.googleSignInName || googleName;
 
-      // Use Google ID as email for backend (unique identifier)
-      // Create a virtual email from Google ID
+      console.log('Google Sign-In successful:', { nameToUse, googleId, googleEmail });
+
+      // Create virtual credentials for backend
       const virtualEmail = `google-${googleId}@google.com`;
-      const virtualPassword = googleId; // Use Google ID as password
+      const virtualPassword = googleId;
 
-      // Try to register with the virtual email
-      let response2 = await fetch(`${API_BASE}/register`, {
+      // Try to register
+      let signupResponse = await fetch(`${API_BASE}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          name: name, 
+          name: nameToUse, 
           email: virtualEmail, 
           password: virtualPassword
         }),
         credentials: 'same-origin'
       });
 
-      let data = await response2.json();
+      let data = await signupResponse.json();
 
-      // If user already exists, try login
-      if (!response2.ok && response2.status === 400) {
-        console.log('User already exists, attempting login...');
-        response2 = await fetch(`${API_BASE}/login`, {
+      // If user exists, try login
+      if (!signupResponse.ok && signupResponse.status === 400) {
+        console.log('User exists, attempting login...');
+        signupResponse = await fetch(`${API_BASE}/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -246,42 +304,32 @@
           }),
           credentials: 'same-origin'
         });
-        data = await response2.json();
+        data = await signupResponse.json();
       }
 
-      if (!response2.ok) {
-        throw new Error(data.error || 'Authentication failed: ' + response2.status);
+      if (!signupResponse.ok) {
+        throw new Error(data.error || 'Authentication failed');
       }
 
       if (data.access_token) {
-        // Store token and user info
+        // Store credentials
         localStorage.setItem('jwt', data.access_token);
-        localStorage.setItem('uc_user', name);
+        localStorage.setItem('uc_user', nameToUse);
         localStorage.setItem('google_id', googleId);
         
         console.log('Authentication successful, redirecting...');
-        showSuccess(`Welcome, ${name}! Redirecting...`);
+        showSuccess(`Welcome, ${nameToUse}! Redirecting...`);
         
-        // Redirect to home after brief delay
         setTimeout(() => {
           window.location.href = 'index.html';
         }, 1500);
       } else {
-        throw new Error('No token received from server');
+        throw new Error('No token received');
       }
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('Sign-in error:', error);
       showError('Sign-in failed: ' + error.message);
       btn.disabled = false;
-      btn.innerHTML = `
-        <svg class="google-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
-        Sign in with Google
-      `;
       isProcessingSignIn = false;
     }
   }
@@ -292,7 +340,7 @@
     el.style.display = 'block';
     setTimeout(() => {
       el.style.display = 'none';
-    }, 6000);
+    }, 5000);
   }
 
   function showSuccess(message) {
