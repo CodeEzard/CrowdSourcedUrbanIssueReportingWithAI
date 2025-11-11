@@ -23,8 +23,8 @@ services:
       - key: IMAGE_CLASSIFICATION_API_URL
         value: https://issue-classification-api.onrender.com/predict
 
-  - type: postgres
-    name: urban-civic-db
+databases:
+  - name: urban-civic-db
     plan: free
     databaseName: civicissue
     user: civicuser
