@@ -99,6 +99,80 @@ let profilePic =
   localStorage.getItem('uc_profile_pic') ||
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><circle cx="24" cy="24" r="24" fill="%23e6eef6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23004d40">User</text></svg>';
 let geoCache = JSON.parse(localStorage.getItem('uc_geo_cache') || '{}');
+
+// Authentication status management
+function updateAuthUI() {
+  const jwt = localStorage.getItem('jwt');
+  const user = localStorage.getItem('uc_user');
+  const loginBtn = document.getElementById('login-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const userDisplay = document.getElementById('user-display');
+
+  if (jwt && user) {
+    // User is logged in
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (logoutBtn) {
+      logoutBtn.style.display = 'block';
+      logoutBtn.addEventListener('click', logout);
+    }
+    if (userDisplay) userDisplay.textContent = `👤 ${user}`;
+  } else {
+    // User is not logged in
+    if (loginBtn) loginBtn.style.display = 'block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
+    if (userDisplay) userDisplay.textContent = '';
+  }
+}
+
+// Logout function
+async function logout() {
+  const jwt = localStorage.getItem('jwt');
+  if (!jwt) {
+    localStorage.removeItem('jwt');
+    localStorage.removeItem('uc_user');
+    updateAuthUI();
+    window.location.href = 'login2.html';
+    return;
+  }
+
+  try {
+    const response = await apiFetch('/logout', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + jwt }
+    });
+
+    if (response.ok) {
+      console.log('Logout successful');
+    } else {
+      console.warn('Logout response:', response.status);
+    }
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+
+  // Clear local storage and redirect
+  localStorage.removeItem('jwt');
+  localStorage.removeItem('uc_user');
+  updateAuthUI();
+  window.location.href = 'login2.html';
+}
+
+// Check if user needs to be logged in for current page
+function requireAuth(message = 'You need to be logged in to access this page') {
+  const jwt = localStorage.getItem('jwt');
+  if (!jwt) {
+    alert(message);
+    window.location.href = 'login2.html';
+    return false;
+  }
+  return true;
+}
+
+// Call this on page load to update auth UI
+document.addEventListener('DOMContentLoaded', () => {
+  updateAuthUI();
+});
+
 let lastDeletedIssue = null;
 
 

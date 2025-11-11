@@ -3,21 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - AI Internship Recommender</title>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
+  <title>Login - Urban Civic</title>
+  <link rel="stylesheet" href="css/style.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: "Inter", Arial, sans-serif;
       background: #0e0e0e;
       color: #fff;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      overflow: hidden;
     }
-
     canvas {
       position: fixed;
       top: 0;
@@ -26,7 +21,6 @@
       height: 100%;
       z-index: -1;
     }
-
     nav {
       display: flex;
       justify-content: space-between;
@@ -35,12 +29,10 @@
       position: relative;
       z-index: 1;
     }
-
     nav .logo {
       font-weight: bold;
       font-size: 1.2rem;
     }
-
     .btn {
       padding: 10px 18px;
       border: 1px solid #555;
@@ -50,12 +42,10 @@
       cursor: pointer;
       transition: 0.3s;
     }
-
     .btn:hover {
       background: linear-gradient(90deg, #ff6a00, #ee0979);
       border: none;
     }
-
     .login-container {
       flex: 1;
       display: flex;
@@ -66,9 +56,8 @@
       position: relative;
       z-index: 1;
     }
-
     .login-box {
-      background: rgb(103 91 91 / 95%);
+      background: rgba(103, 91, 91, 0.95);
       padding: 60px 50px;
       border-radius: 20px;
       max-width: 450px;
@@ -77,115 +66,296 @@
       position: relative;
       overflow: hidden;
     }
-
     .login-box h2 {
       margin-bottom: 10px;
     }
-
     .login-box p {
       color: #bbb;
       margin-bottom: 25px;
     }
-
-    .g_id_signin {
-      display: flex;
-      justify-content: center;
+    .form-group {
+      margin-bottom: 12px;
     }
-
-    footer {
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #444;
       background: transparent;
-      padding: 20px 50px;
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      color: #888;
-      font-size: 0.9rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    footer a {
-      color: #aaa;
-      text-decoration: none;
-      margin-right: 20px;
-    }
-
-    footer a:hover {
       color: #fff;
+      font-size: 1rem;
+    }
+    .form-group input::placeholder {
+      color: #999;
+    }
+    .error-message {
+      color: #ff4444;
+      font-size: 0.9rem;
+      margin-top: 8px;
+      display: none;
+    }
+    .success-message {
+      color: #44ff44;
+      font-size: 0.9rem;
+      margin-top: 8px;
+      display: none;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      margin-top: 20px;
+      background: linear-gradient(90deg, #ff6a00, #ee0979);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .submit-btn:hover {
+      opacity: 0.9;
+    }
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .toggle-link {
+      margin-top: 15px;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+    .toggle-link a {
+      color: #ff6a00;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .toggle-link a:hover {
+      text-decoration: underline;
     }
   </style>
-
-  <script>
-  function handleCredentialResponse(response) {
-    console.log("Google ID Token:", response.credential);
-
-    // Mock success flow for UI testing
-    alert("Login successful! (UI test only)");
-
-    // Redirect to index.html after 1 second
-    setTimeout(() => {
-      window.location.href = "index.html";
-    });
-
-    // --- Backend integration (keep commented for now) ---
-    /*
-    fetch("http://localhost:8080/api/auth/google", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_token: response.credential })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.token) {
-        localStorage.setItem("jwt", data.token);
-        alert("Login successful!");
-        window.location.href = "index.html";
-      } else {
-        alert("Login failed!");
-      }
-    })
-    .catch(console.error);
-    */
-  }
-</script>
-
 </head>
 <body>
 
 <canvas id="bubble-canvas"></canvas>
 
 <nav>
-  <div class="logo">AI Internship<span style="color:#ee0979">Match</span></div>
-  <button class="btn">Register</button>
+  <div class="logo">Urban<span style="color:#ee0979">Civic</span></div>
+  <a href="index.html" class="btn">Back Home</a>
 </nav>
 
 <div class="login-container">
   <div class="login-box">
-    <h2>Welcome Back</h2>
-    <p>Login to continue your AI internship journey</p>
+    <!-- Login Form -->
+    <div id="login-form-container">
+      <h2>Welcome Back</h2>
+      <p>Login to your Urban Civic account</p>
 
-    <div id="g_id_onload"
-      data-client_id="810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com"
-      data-callback="handleCredentialResponse">
-    </div>
-    <div class="g_id_signin"
-      data-type="standard"
-      data-shape="rectangular"
-      data-theme="outline"
-      data-text="sign_in_with"
-      data-size="large">
+      <form id="login-form">
+        <div class="form-group">
+          <input type="email" id="login-email" placeholder="Email" required aria-label="Email">
+        </div>
+        <div class="form-group">
+          <input type="password" id="login-password" placeholder="Password" required aria-label="Password">
+        </div>
+        <div class="error-message" id="login-error"></div>
+        <div class="success-message" id="login-success"></div>
+        <button type="submit" class="submit-btn" id="login-submit-btn">Login</button>
+      </form>
+
+      <div class="toggle-link">
+        Don't have an account? <a onclick="toggleForm()">Register here</a>
+      </div>
     </div>
 
-    <!-- Simple email/password form that posts to backend /login -->
-    <form id="login-form" style="margin-top:18px; display:flex;flex-direction:column;gap:12px">
-      <input id="email" type="email" placeholder="Email" required style="padding:10px;border-radius:8px;border:1px solid #444;background:transparent;color:#fff">
-      <input id="password" type="password" placeholder="Password" required style="padding:10px;border-radius:8px;border:1px solid #444;background:transparent;color:#fff">
-      <button type="submit" class="btn">Login</button>
-    </form>
-    <div style="margin-top:12px;color:#bbb;font-size:0.9rem">Or sign-in using Google above (UI-only in this demo)</div>
+    <!-- Register Form -->
+    <div id="register-form-container" style="display:none">
+      <h2>Create Account</h2>
+      <p>Join Urban Civic and start reporting issues</p>
+
+      <form id="register-form">
+        <div class="form-group">
+          <input type="text" id="register-name" placeholder="Full Name" required aria-label="Full Name">
+        </div>
+        <div class="form-group">
+          <input type="email" id="register-email" placeholder="Email" required aria-label="Email">
+        </div>
+        <div class="form-group">
+          <input type="password" id="register-password" placeholder="Password (min 6 chars)" required aria-label="Password">
+        </div>
+        <div class="error-message" id="register-error"></div>
+        <div class="success-message" id="register-success"></div>
+        <button type="submit" class="submit-btn" id="register-submit-btn">Register</button>
+      </form>
+
+      <div class="toggle-link">
+        Already have an account? <a onclick="toggleForm()">Login here</a>
+      </div>
+    </div>
   </div>
 </div>
 
+<script>
+  // API base URL - adjust if backend is on different domain
+  const API_BASE = window.location.origin;
+
+  // Toggle between login and register forms
+  function toggleForm() {
+    document.getElementById('login-form-container').style.display = 
+      document.getElementById('login-form-container').style.display === 'none' ? 'block' : 'none';
+    document.getElementById('register-form-container').style.display = 
+      document.getElementById('register-form-container').style.display === 'none' ? 'block' : 'none';
+  }
+
+  // Clear message after 5 seconds
+  function clearMessage(elementId, duration = 5000) {
+    setTimeout(() => {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.style.display = 'none';
+        el.textContent = '';
+      }
+    }, duration);
+  }
+
+  // Show error message
+  function showError(elementId, message) {
+    const el = document.getElementById(elementId);
+    el.textContent = message;
+    el.style.display = 'block';
+    el.style.color = '#ff4444';
+    clearMessage(elementId, 5000);
+  }
+
+  // Show success message
+  function showSuccess(elementId, message) {
+    const el = document.getElementById(elementId);
+    el.textContent = message;
+    el.style.display = 'block';
+    el.style.color = '#44ff44';
+    clearMessage(elementId, 5000);
+  }
+
+  // Handle Login
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const submitBtn = document.getElementById('login-submit-btn');
+    
+    // Validation
+    if (!email || !password) {
+      showError('login-error', 'Please fill in all fields');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in...';
+
+    try {
+      const response = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        credentials: 'same-origin'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showError('login-error', data.error || 'Login failed: ' + response.status);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+        return;
+      }
+
+      // Store JWT token in localStorage
+      if (data.access_token) {
+        localStorage.setItem('jwt', data.access_token);
+        localStorage.setItem('uc_user', email);
+        showSuccess('login-success', 'Login successful! Redirecting...');
+        
+        // Redirect to home after a brief delay
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1000);
+      } else {
+        showError('login-error', 'No token received from server');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      showError('login-error', 'Network error: ' + error.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Login';
+    }
+  });
+
+  // Handle Register
+  document.getElementById('register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const name = document.getElementById('register-name').value.trim();
+    const email = document.getElementById('register-email').value.trim();
+    const password = document.getElementById('register-password').value;
+    const submitBtn = document.getElementById('register-submit-btn');
+    
+    // Validation
+    if (!name || !email || !password) {
+      showError('register-error', 'Please fill in all fields');
+      return;
+    }
+    if (password.length < 6) {
+      showError('register-error', 'Password must be at least 6 characters');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Registering...';
+
+    try {
+      const response = await fetch(`${API_BASE}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+        credentials: 'same-origin'
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showError('register-error', data.error || 'Registration failed: ' + response.status);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Register';
+        return;
+      }
+
+      // Store JWT token in localStorage
+      if (data.access_token) {
+        localStorage.setItem('jwt', data.access_token);
+        localStorage.setItem('uc_user', name);
+        showSuccess('register-success', 'Registration successful! Redirecting...');
+        
+        // Redirect to home after a brief delay
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1000);
+      } else {
+        showError('register-error', 'No token received from server');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Register';
+      }
+    } catch (error) {
+      console.error('Register error:', error);
+      showError('register-error', 'Network error: ' + error.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Register';
+    }
+  });
+</script>
+
+<!-- Bubble Canvas Animation -->
 <script>
   const canvas = document.getElementById("bubble-canvas");
   const ctx = canvas.getContext("2d");
@@ -245,38 +415,6 @@
 
   initBubbles();
   animateBubbles();
-</script>
-
-<script>
-  // Simple login form behavior: POST /login {email,password} -> {access_token}
-  document.getElementById('login-form').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    try {
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-        credentials: 'same-origin'
-      });
-      if (!res.ok) {
-        alert('Login failed: ' + res.status);
-        return;
-      }
-      const data = await res.json();
-      if (data && data.access_token) {
-        localStorage.setItem('jwt', data.access_token);
-        alert('Login successful');
-        window.location.href = 'index.html';
-      } else {
-        alert('Login failed: invalid response');
-      }
-    } catch (err) {
-      console.error('Login error', err);
-      alert('Login error');
-    }
-  });
 </script>
 
 </body>
