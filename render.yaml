@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: urban-civic
+    env: docker
+    region: oregon
+    plan: free
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: FRONTEND_DIR
+        value: /app/frontend
+      - key: DATABASE_DSN
+        fromDatabase:
+          name: urban-civic-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ML_API_URL
+        value: https://urgency-api-latest.onrender.com/predict
+      - key: IMAGE_CLASSIFICATION_API_URL
+        value: https://issue-classification-api.onrender.com/predict
+
+  - type: postgres
+    name: urban-civic-db
+    plan: free
+    databaseName: civicissue
+    user: civicuser

@@ -3,6 +3,31 @@
 const qs = s => document.querySelector(s);
 const qsa = s => document.querySelectorAll(s);
 
+// Base URL for backend API when served cross-origin (e.g. frontend on Vercel).
+// You can override at runtime by defining window.API_BASE in the HTML before including this script.
+// Example in index.html head: <script>window.API_BASE="https://your-backend-domain";</script>
+// If not set and we're on a vercel.app domain, provide a placeholder you MUST change.
+const API_BASE = (typeof window !== 'undefined' && (window.API_BASE || localStorage.getItem('api_base')))
+  || (typeof window !== 'undefined' && window.location.hostname.endsWith('vercel.app')
+      ? 'https://REPLACE_WITH_BACKEND_DOMAIN' // TODO: set to your deployed backend host
+      : ''); // empty means same-origin
+
+function apiUrl(path) {
+  // Ensure single slash joining
+  if (!API_BASE) return path; // same-origin
+  return API_BASE.replace(/\/$/, '') + path;
+}
+
+function apiFetch(path, options = {}) {
+  // Add credentials only if we have a cross-origin base and intend to use cookies
+  const crossOrigin = API_BASE && !API_BASE.includes(window.location.host);
+  const merged = {
+    credentials: crossOrigin ? 'include' : 'same-origin',
+    ...options
+  };
+  return fetch(apiUrl(path), merged);
+}
+
 
 const defaultData = [
   { id: 1, title: 'Large pothole on Main Street', category: 'Pothole', location: 'Main Street, Mumbai', desc: 'A deep pothole causing traffic delays.', photo: '', lat: 19.0760, lon: 72.8777, votes: 12, status: 'open', reporter: 'rajesh', comments: [], assignedAt: null },
@@ -29,7 +54,7 @@ function saveData(/*data*/) {
 // Fetch feed from backend /feed and map backend posts to frontend issue shape.
 async function fetchFeedFromServer() {
   try {
-    const resp = await fetch('/feed', { credentials: 'same-origin' });
+    const resp = await apiFetch('/feed');
     if (!resp.ok) throw new Error('Failed to fetch feed: ' + resp.status);
     const posts = await resp.json();
     if (!Array.isArray(posts)) throw new Error('Invalid feed format');
@@ -162,7 +187,11 @@ async function postComment(postID, content) {
   const token = localStorage.getItem('jwt');
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const resp = await fetch('/comment', { method: 'POST', headers, body: JSON.stringify({ post_id: postID, content }), credentials: 'same-origin' });
+  const resp = await apiFetch('/comment', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ post_id: postID, content })
+  });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
     throw new Error('Comment failed: ' + resp.status + ' ' + text);
@@ -175,7 +204,11 @@ async function postUpvote(postID) {
   const token = localStorage.getItem('jwt');
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = 'Bearer ' + token;
-  const resp = await fetch('/upvote', { method: 'POST', headers, body: JSON.stringify({ post_id: postID }), credentials: 'same-origin' });
+  const resp = await apiFetch('/upvote', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ post_id: postID })
+  });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
     throw new Error('Upvote failed: ' + resp.status + ' ' + text);

@@ -133,7 +133,8 @@
         <div><strong>Reported by:</strong> ${issue.reporter}</div>
         ${issue.assignedAt ? `<div><strong>Assigned:</strong> ${new Date(issue.assignedAt).toLocaleString()}</div>` : ''}
       `;
-      qs('#modal-comments').innerHTML = issue.comments.map(c => `<div class="comment"><strong>${c.user}:</strong> ${c.text} <span class="muted small">(${new Date(c.timestamp).toLocaleString()})</span></div>`).join('');
+      const comments = Array.isArray(issue.comments) ? issue.comments : [];
+      qs('#modal-comments').innerHTML = comments.map(c => `<div class="comment"><strong>${c.user || 'User'}:</strong> ${c.text || ''} <span class="muted small">(${c.timestamp ? new Date(c.timestamp).toLocaleString() : ''})</span></div>`).join('');
       qs('#issue-modal').style.display = 'flex';
       qs('#issue-modal').classList.add('active');
       qs('#comment-input').focus();
@@ -158,11 +159,11 @@
 
     qs('#comment-submit').addEventListener('click', async () => {
       const comment = qs('#comment-input').value.trim();
-      const issueId = Number(qs('#comment-submit').dataset.issueId);
+      const issueId = qs('#comment-submit').dataset.issueId; // support UUIDs
       if (!comment || !issueId) return;
       try {
         const resp = await postComment(String(issueId), comment);
-        const issue = issues.find(i => i.id === issueId);
+        const issue = issues.find(i => String(i.id) === String(issueId));
         if (issue) {
           const commentObj = {
             user: resp.user?.name || currentUser,
@@ -183,7 +184,8 @@
     function renderRecent() {
       const el = qs('#recent-list');
       el.innerHTML = '';
-      const sorted = [...issues].sort((a, b) => b.id - a.id).slice(0, 5);
+      // Use backend order (already newest-first) and take top 5
+      const sorted = [...issues].slice(0, 5);
       sorted.forEach(it => {
         const d = document.createElement('div');
         d.className = 'issue';
@@ -273,8 +275,8 @@
         document.addEventListener('click', e => {
       const openBtn = e.target.closest('[data-open]');
       if (openBtn) {
-        const id = Number(openBtn.getAttribute('data-open'));
-        const issue = issues.find(i => i.id === id);
+        const id = openBtn.getAttribute('data-open'); // support UUIDs
+        const issue = issues.find(i => String(i.id) === String(id));
         if (issue) showModal(issue);
       }
     });

@@ -112,7 +112,8 @@
         <div><strong>Reported by:</strong> ${issue.reporter}</div>
         ${issue.assignedAt ? `<div><strong>Assigned:</strong> ${new Date(issue.assignedAt).toLocaleString()}</div>` : ''}
       `;
-      qs('#modal-comments').innerHTML = issue.comments.map(c => `<div class="comment"><strong>${c.user}:</strong> ${c.text} <span class="muted small">(${new Date(c.timestamp).toLocaleString()})</span></div>`).join('');
+      const comments = Array.isArray(issue.comments) ? issue.comments : [];
+      qs('#modal-comments').innerHTML = comments.map(c => `<div class="comment"><strong>${c.user || 'User'}:</strong> ${c.text || ''} <span class="muted small">(${c.timestamp ? new Date(c.timestamp).toLocaleString() : ''})</span></div>`).join('');
       qs('#issue-modal').style.display = 'flex';
       qs('#issue-modal').classList.add('active');
       qs('#comment-input').focus();
@@ -159,8 +160,14 @@
       }
     });
 
+    // Render issues list from global `issues` populated by fetchFeedFromServer()
     function renderIssues() {
       const el = qs('#issues-list');
+      // Show a placeholder if nothing loaded yet
+      if (!Array.isArray(issues) || issues.length === 0) {
+        el.innerHTML = '<div class="muted">No issues to display yet.</div>';
+        return;
+      }
       el.innerHTML = '';
       let list = [...issues];
       const cat = qs('#filter-category').value;
@@ -184,7 +191,7 @@
             <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
               <div class="issue-actions">
                 <button class="upvote" data-id="${it.id}" aria-label="Upvote issue ${it.title}">▲ ${it.votes}</button>
-                <span class="status ${it.status}">${it.status}</span>
+                <span title="Urgency" class="status ${it.status}">${it.status}</span>
               </div>
               <div><button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button></div>
             </div>
@@ -223,8 +230,9 @@
         }
       }
       if (openBtn) {
-        const id = Number(openBtn.getAttribute('data-open'));
-        const issue = issues.find(i => i.id === id);
+        // Support string UUID IDs from backend
+        const id = openBtn.getAttribute('data-open');
+        const issue = issues.find(i => String(i.id) === String(id));
         if (issue) showModal(issue);
       }
     });
@@ -233,7 +241,22 @@
     qs('#filter-category').value = filters.category || 'all';
     qs('#filter-status').value = filters.status || 'all';
     qs('#search').value = filters.search || '';
-    renderIssues();
+    // Re-render when feed updates
+    document.addEventListener('issuesUpdated', renderIssues);
+
+    // Initial load: fetch backend feed; on failure, fall back to demo data
+    (async function initFeed() {
+      try {
+        const data = await fetchFeedFromServer();
+        if (!data) {
+          issues = defaultData;
+          document.dispatchEvent(new CustomEvent('issuesUpdated'));
+        }
+      } catch (e) {
+        issues = defaultData;
+        document.dispatchEvent(new CustomEvent('issuesUpdated'));
+      }
+    })();
   </script>
 </body>
 </html>

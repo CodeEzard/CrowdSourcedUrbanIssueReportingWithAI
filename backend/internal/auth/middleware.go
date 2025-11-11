@@ -42,52 +42,56 @@ func AuthMiddleware(jwtSvc *JWTService, rdb *redis.Client) func(http.Handler) ht
 				return
 			}
 
-			// Extract token from Authorization header, cookie, or query param
-			var tokenStr string
-			tokenSource := "none"
-			auth := r.Header.Get("Authorization")
-			if auth != "" {
+			// Extract token candidates in preferred order and validate the first that works.
+			// This makes the middleware robust if, for example, a stale Authorization header
+			// exists but a valid cookie is also present.
+			type candidate struct{ src, val string }
+			candidates := make([]candidate, 0, 3)
+			if auth := r.Header.Get("Authorization"); auth != "" {
 				parts := strings.SplitN(auth, " ", 2)
 				if len(parts) == 2 && strings.ToLower(parts[0]) == "bearer" {
-					tokenStr = parts[1]
-					tokenSource = "authorization_header"
+					candidates = append(candidates, candidate{src: "authorization_header", val: parts[1]})
 				}
 			}
-			if tokenStr == "" {
-				if c, err := r.Cookie("access_token"); err == nil {
-					tokenStr = c.Value
-					tokenSource = "cookie"
-				}
+			if c, err := r.Cookie("access_token"); err == nil && c.Value != "" {
+				candidates = append(candidates, candidate{src: "cookie", val: c.Value})
 			}
-			if tokenStr == "" {
-				if t := r.URL.Query().Get("token"); t != "" {
-					tokenStr = t
-					tokenSource = "query_param"
-				}
+			if t := r.URL.Query().Get("token"); t != "" {
+				candidates = append(candidates, candidate{src: "query_param", val: t})
 			}
 
-			if tokenStr == "" {
+			if len(candidates) == 0 {
 				log.Printf("auth: missing access token for %s %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 				writeJSONError(w, "missing access token", http.StatusUnauthorized)
 				return
 			}
-			log.Printf("auth: token source=%s method=%s path=%s remote=%s", tokenSource, r.Method, r.URL.Path, r.RemoteAddr)
-			// Check blacklist in redis first (if provided)
-			if rdb != nil {
-				if ok, err := cache.IsTokenBlacklisted(context.Background(), rdb, tokenStr); err == nil && ok {
-					writeJSONError(w, "token revoked", http.StatusUnauthorized)
-					return
+
+			var validated bool
+			for _, cnd := range candidates {
+				// Check blacklist in redis first (if provided)
+				if rdb != nil {
+					if ok, err := cache.IsTokenBlacklisted(context.Background(), rdb, cnd.val); err == nil && ok {
+						// If one candidate is explicitly revoked, fail fast
+						writeJSONError(w, "token revoked", http.StatusUnauthorized)
+						return
+					}
+				}
+				if uid, err := jwtSvc.ValidateToken(cnd.val); err == nil {
+					log.Printf("auth: accepted token source=%s method=%s path=%s remote=%s", cnd.src, r.Method, r.URL.Path, r.RemoteAddr)
+					// inject into context and proceed
+					ctx := context.WithValue(r.Context(), ContextUserID, uid)
+					next.ServeHTTP(w, r.WithContext(ctx))
+					validated = true
+					break
+				} else {
+					log.Printf("auth: token from %s invalid: %v", cnd.src, err)
+					// try next candidate
 				}
 			}
-
-			uid, err := jwtSvc.ValidateToken(tokenStr)
-			if err != nil {
-				writeJSONError(w, "invalid token: "+err.Error(), http.StatusUnauthorized)
+			if !validated {
+				writeJSONError(w, "invalid or expired token", http.StatusUnauthorized)
 				return
 			}
-			// inject into context
-			ctx := context.WithValue(r.Context(), ContextUserID, uid)
-			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
