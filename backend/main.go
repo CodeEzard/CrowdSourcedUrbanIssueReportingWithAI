@@ -67,6 +67,7 @@ func main() {
 	reportService := services.NewReportService(postRepo)
 	feedHandler := handlers.NewFeedHandler(feedService)
 	reportHandler := handlers.NewReportHandler(reportService)
+	mlHandler := handlers.NewMLHandler()
 	// JWT service for auth
 	jwtSvc := auth.NewJWTService()
 	// user repo & auth service
@@ -148,6 +149,9 @@ func main() {
 	http.HandleFunc("/feed", feedHandler.ServeFeed)
 	http.HandleFunc("/login", authHandler.Login)
 	http.HandleFunc("/register", authHandler.Register)
+	// ML endpoints (public - for frontend real-time predictions)
+	http.HandleFunc("/classify-image", mlHandler.ServeClassifyImage)
+	http.HandleFunc("/predict-urgency", mlHandler.ServePredictUrgency)
 	authMw := auth.AuthMiddleware(jwtSvc, redisClient)
 
 	// Allow disabling auth in development for quick local testing. When

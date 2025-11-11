@@ -156,8 +156,11 @@
         if (data.secure_url) {
           qs('#r-photo').dataset.src = data.secure_url;
           qs('#photo-preview').innerHTML = `<img src="${data.secure_url}" style="max-width:100%;border-radius:10px" alt="Photo preview">`;
-          qs('#upload-status').innerHTML = `Uploaded URL: <a href="${data.secure_url}" target="_blank">${data.secure_url}</a>`;
+          qs('#upload-status').innerHTML = `Uploaded URL: <a href="${data.secure_url}" target="_blank">${data.secure_url}</a><div id="classification-status" style="margin-top:12px; color:#4a9eff;"></div>`;
           showToast('Image uploaded successfully!');
+          
+          // Now classify the image using ML
+          classifyImageWithML(data.secure_url);
         } else {
           throw new Error('Upload failed');
         }
@@ -168,6 +171,59 @@
         qs('#upload-status').textContent = '';
       }
     });
+
+    // ML Classification function
+    async function classifyImageWithML(imageUrl) {
+      const statusEl = qs('#classification-status');
+      if (!statusEl) return;
+      
+      statusEl.innerHTML = '🔍 Analyzing image...';
+      
+      try {
+        const response = await fetch('/classify-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_url: imageUrl })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.predicted_class) {
+          const predicted = result.predicted_class.toLowerCase();
+          statusEl.innerHTML = `✅ Image classified as: <strong>${result.predicted_class}</strong>`;
+          
+          // Auto-fill the category if we can match it
+          const categorySelect = qs('#r-category');
+          const options = Array.from(categorySelect.options).map(o => o.textContent.toLowerCase());
+          
+          // Try to match the predicted class to a category
+          if (options.includes(predicted)) {
+            categorySelect.value = result.predicted_class;
+            showToast(`Category auto-filled: ${result.predicted_class}`, 'success');
+          } else if (predicted.includes('pothole')) {
+            categorySelect.value = 'Road';
+            showToast('Category auto-filled: Road (for potholes)', 'success');
+          } else if (predicted.includes('pole') || predicted.includes('utility')) {
+            categorySelect.value = 'Utilities';
+            showToast('Category auto-filled: Utilities', 'success');
+          } else if (predicted.includes('light') || predicted.includes('streetlight')) {
+            categorySelect.value = 'Streetlight';
+            showToast('Category auto-filled: Streetlight', 'success');
+          } else if (predicted.includes('trash') || predicted.includes('garbage') || predicted.includes('waste')) {
+            categorySelect.value = 'Garbage';
+            showToast('Category auto-filled: Garbage', 'success');
+          } else if (predicted.includes('water') || predicted.includes('flood')) {
+            categorySelect.value = 'Waterlogging';
+            showToast('Category auto-filled: Waterlogging', 'success');
+          }
+        } else {
+          statusEl.innerHTML = '⚠️ Could not classify image, please select category manually';
+        }
+      } catch (err) {
+        console.warn('Image classification error:', err);
+        statusEl.innerHTML = '⚠️ Classification service unavailable, please select category manually';
+      }
+    }
 
     // --- Geolocation ---
     qs('#r-location').addEventListener('focus', async () => {
@@ -206,6 +262,49 @@
       qs('#step-2').style.display = 'block';
       qs('#next-step').style.display = 'none';
       qs('#prev-step').style.display = 'block';
+    });
+
+    // --- Urgency prediction from description ---
+    let urgencyPredictionTimeout;
+    qs('#r-desc').addEventListener('input', () => {
+      clearTimeout(urgencyPredictionTimeout);
+      const desc = qs('#r-desc').value.trim();
+      
+      if (desc.length > 10) {
+        let predictionIndicator = qs('#urgency-prediction');
+        if (!predictionIndicator) {
+          predictionIndicator = document.createElement('div');
+          predictionIndicator.id = 'urgency-prediction';
+          predictionIndicator.style.marginTop = '12px';
+          predictionIndicator.style.color = '#4a9eff';
+          qs('#step-1').appendChild(predictionIndicator);
+        }
+        
+        predictionIndicator.innerHTML = '🤖 Analyzing urgency...';
+        
+        urgencyPredictionTimeout = setTimeout(async () => {
+          try {
+            const response = await fetch('/predict-urgency', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: desc })
+            });
+            
+            const result = await response.json();
+            
+            if (response.ok && result.urgency) {
+              const urgencyMap = { 1: 'Low', 2: 'Medium', 3: 'Critical' };
+              const urgencyColors = { 1: '#4a9eff', 2: '#ffaa00', 3: '#ff4444' };
+              predictionIndicator.innerHTML = `✅ Predicted Urgency: <strong style="color:${urgencyColors[result.urgency]}">${urgencyMap[result.urgency]}</strong> (${result.urgency}/3)`;
+            } else {
+              predictionIndicator.innerHTML = '⚠️ Could not analyze urgency';
+            }
+          } catch (err) {
+            console.warn('Urgency prediction error:', err);
+            predictionIndicator.innerHTML = '⚠️ Urgency service unavailable';
+          }
+        }, 500);
+      }
     });
 
     qs('#prev-step').addEventListener('click', () => {
