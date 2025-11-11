@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"crowdsourcedurbanissuereportingwithai/backend/configs"
+	config "crowdsourcedurbanissuereportingwithai/backend/configs"
 	"crowdsourcedurbanissuereportingwithai/backend/internal/auth"
 	"crowdsourcedurbanissuereportingwithai/backend/internal/cache"
 	"crowdsourcedurbanissuereportingwithai/backend/internal/services"

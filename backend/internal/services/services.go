@@ -28,7 +28,24 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 	if err != nil {
 		return nil, err
 	}
-	return s.PostRepo.ReportIssueViaPost(uid.String(), issueName, issueDesc, issueCat, postDesc, status, urgency, lat, lng, mediaURL)
+	// If an ML API is configured, attempt to predict urgency from the post description.
+	if pred, err := PredictUrgency(postDesc); err == nil && pred != 0 {
+		urgency = pred
+	} else if err != nil {
+		// non-fatal: log and continue with provided urgency
+		// PredictUrgency logs details; we don't block reporting if ML fails.
+	}
+	
+	// If an image classification API is configured, attempt to classify the image.
+	classifiedAs := ""
+	if classified, err := ClassifyImage(mediaURL); err == nil && classified != "" {
+		classifiedAs = classified
+	} else if err != nil {
+		// non-fatal: log and continue without classification
+		// ClassifyImage logs details; we don't block reporting if classification fails.
+	}
+	
+	return s.PostRepo.ReportIssueViaPost(uid.String(), issueName, issueDesc, issueCat, postDesc, status, urgency, lat, lng, mediaURL, classifiedAs)
 }
 func (s *FeedService) GetFeed() ([]models.Post, error) {
 	return s.PostRepo.GetFeedPosts()

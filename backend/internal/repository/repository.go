@@ -23,7 +23,7 @@ func (r *PostRepository) GetFeedPosts() ([]models.Post, error) {
 }
 
 // ReportIssueViaPost: Create an issue if not exists, then create a post for it
-func (r *PostRepository) ReportIssueViaPost(userID, issueName, issueDesc, issueCat, postDesc, status string, urgency int, lat, lng float64, mediaURL string) (*models.Post, error) {
+func (r *PostRepository) ReportIssueViaPost(userID, issueName, issueDesc, issueCat, postDesc, status string, urgency int, lat, lng float64, mediaURL string, classifiedAs string) (*models.Post, error) {
 	var issue models.Issue
 	err := r.DB.Where("name = ?", issueName).First(&issue).Error
 	if err == gorm.ErrRecordNotFound {
@@ -48,14 +48,15 @@ func (r *PostRepository) ReportIssueViaPost(userID, issueName, issueDesc, issueC
 		return nil, err
 	}
 	post := models.Post{
-		IssueID:     issue.ID,
-		UserID:      userUUID,
-		Description: postDesc,
-		Status:      status,
-		Urgency:     urgency,
-		Lat:         lat,
-		Lng:         lng,
-		MediaURL:    mediaURL,
+		IssueID:      issue.ID,
+		UserID:       userUUID,
+		Description:  postDesc,
+		Status:       status,
+		Urgency:      urgency,
+		ClassifiedAs: classifiedAs,
+		Lat:          lat,
+		Lng:          lng,
+		MediaURL:     mediaURL,
 	}
 	if err := r.DB.Create(&post).Error; err != nil {
 		return nil, err

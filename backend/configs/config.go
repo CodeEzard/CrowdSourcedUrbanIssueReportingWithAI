@@ -43,3 +43,13 @@ func GetRedisPassword() string {
 func GetAllowedOrigin() string {
 	return os.Getenv("ALLOWED_ORIGIN")
 }
+
+// GetMLAPIURL returns the configured ML prediction API URL (optional)
+func GetMLAPIURL() string {
+	return os.Getenv("ML_API_URL")
+}
+
+// GetImageClassificationAPIURL returns the configured image classification API URL (optional)
+func GetImageClassificationAPIURL() string {
+	return os.Getenv("IMAGE_CLASSIFICATION_API_URL")
+}
