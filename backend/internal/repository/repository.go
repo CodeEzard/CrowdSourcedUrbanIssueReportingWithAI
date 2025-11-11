@@ -107,3 +107,26 @@ func (r *PostRepository) ToggleUpvote(userID, postID uuid.UUID) (bool, error) {
 	}
 	return true, nil
 }
+
+// GetPostComments fetches all comments for a post
+func (r *PostRepository) GetPostComments(postID uuid.UUID) ([]models.Comment, error) {
+	var comments []models.Comment
+	err := r.DB.Where("post_id = ?", postID).Preload("User").Order("created_at ASC").Find(&comments).Error
+	return comments, err
+}
+
+// UpdatePostUrgency updates the urgency field of a post
+func (r *PostRepository) UpdatePostUrgency(postID uuid.UUID, newUrgency int) error {
+	return r.DB.Model(&models.Post{}).Where("id = ?", postID).Update("urgency", newUrgency).Error
+}
+
+// GetPost fetches a single post by ID
+func (r *PostRepository) GetPost(postID uuid.UUID) (*models.Post, error) {
+	var post models.Post
+	err := r.DB.Preload("User").Preload("Issue").Preload("Comments").First(&post, "id = ?", postID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &post, nil
+}
+

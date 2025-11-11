@@ -3,6 +3,7 @@ package services
 import (
 	"crowdsourcedurbanissuereportingwithai/backend/internal/repository"
 	"crowdsourcedurbanissuereportingwithai/backend/models"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -61,7 +62,18 @@ func (s *ReportService) AddComment(userID, postID, content string) (*models.Comm
 	if err != nil {
 		return nil, err
 	}
-	return s.PostRepo.AddComment(uid, pid, content)
+	comment, err := s.PostRepo.AddComment(uid, pid, content)
+	if err != nil {
+		return nil, err
+	}
+	
+	// IMPORTANT: Recalculate post urgency based on this new comment
+	if err := s.UpdatePostUrgencyFromComments(pid); err != nil {
+		// Non-fatal: log but don't fail the comment creation
+		log.Printf("warning: failed to update post urgency after comment: %v", err)
+	}
+	
+	return comment, nil
 }
 
 // ToggleUpvote wraps repository call to toggle an upvote
@@ -75,4 +87,40 @@ func (s *ReportService) ToggleUpvote(userID, postID string) (bool, error) {
 		return false, err
 	}
 	return s.PostRepo.ToggleUpvote(uid, pid)
+}
+
+// UpdatePostUrgencyFromComments recalculates the post's urgency based on all its comments
+// This is called after a new comment is added to dynamically update the post's priority
+func (s *ReportService) UpdatePostUrgencyFromComments(postID uuid.UUID) error {
+	// Fetch the post
+	post, err := s.PostRepo.GetPost(postID)
+	if err != nil {
+		return err
+	}
+
+	// Fetch all comments for this post
+	comments, err := s.PostRepo.GetPostComments(postID)
+	if err != nil {
+		return err
+	}
+
+	// Calculate urgency scores for each comment
+	var commentScores []float64
+	for _, comment := range comments {
+		score := CalculateCommentUrgency(comment.Content)
+		commentScores = append(commentScores, score.Score)
+	}
+
+	// Calculate the new urgency level
+	newUrgency, newLevel := CalculateAggregateUrgency(post.Urgency, commentScores)
+
+	// Update the post's urgency in the database
+	if err := s.PostRepo.UpdatePostUrgency(postID, newUrgency); err != nil {
+		return err
+	}
+
+	// Log the urgency update for debugging
+	LogUrgencyCalculation(postID, post.Urgency, commentScores, newUrgency, newLevel)
+
+	return nil
 }
