@@ -217,9 +217,7 @@
             client_id: '810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com',
             callback: handleCredentialResponse,
             auto_select: false,
-            // Force redirect flow to avoid FedCM/popup restrictions
-            ux_mode: 'redirect',
-            login_uri: 'https://urban-civic-9oxw.onrender.com/google-login',
+            ux_mode: 'popup',
             use_fedcm_for_prompt: false
           });
           console.log('Google Sign-In SDK initialized');
@@ -248,8 +246,8 @@
 
     <div id="g_id_onload"
       data-client_id="810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com"
-      data-login_uri="https://urban-civic-9oxw.onrender.com/google-login"
-      data-ux_mode="redirect"
+      data-callback="handleCredentialResponse"
+      data-ux_mode="popup"
       data-auto_prompt="false">
     </div>
 
