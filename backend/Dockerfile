@@ -4,13 +4,12 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . ./
-WORKDIR /src/backend
-# Print Go environment and modules for easier debugging in CI logs
-RUN go env && go list -m all
 # Build the backend with verbose output so CI logs show which packages are compiled
+# Stay in /src where go.mod is, and explicitly build the backend package
 ENV CGO_ENABLED=0
 ENV GOOS=linux
-RUN go build -v -o /bin/backend .
+RUN go env && go list -m all
+RUN go build -v -o /bin/backend ./backend
 
 FROM alpine:3.18
 RUN apk add --no-cache ca-certificates
