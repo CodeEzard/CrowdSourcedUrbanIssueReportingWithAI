@@ -140,7 +140,6 @@
 
 <nav>
   <div class="logo">Urban<span style="color:#ee0979">Civic</span></div>
-  <a href="index.html" class="btn">Back Home</a>
 </nav>
 
 <div class="login-container">
@@ -197,6 +196,15 @@
 <script>
   // API base URL - adjust if backend is on different domain
   const API_BASE = window.location.origin;
+
+  // Check if user is already logged in - redirect to home
+  window.addEventListener('DOMContentLoaded', () => {
+    const jwt = localStorage.getItem('jwt');
+    if (jwt) {
+      // User is already logged in, redirect to home
+      window.location.href = 'index.html';
+    }
+  });
 
   // Toggle between login and register forms
   function toggleForm() {

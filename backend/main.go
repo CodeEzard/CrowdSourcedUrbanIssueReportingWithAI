@@ -119,11 +119,11 @@ func main() {
 	fileServer := http.FileServer(fileSystem)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Always serve index.html for root
+		// Serve login2.html for root (authentication landing page)
 		if r.URL.Path == "/" || r.URL.Path == "" {
-			idxp := filepath.Join(frontendDir, "index.html")
-			if _, err := os.Stat(idxp); err == nil {
-				http.ServeFile(w, r, idxp)
+			loginp := filepath.Join(frontendDir, "login2.html")
+			if _, err := os.Stat(loginp); err == nil {
+				http.ServeFile(w, r, loginp)
 				return
 			}
 			http.NotFound(w, r)

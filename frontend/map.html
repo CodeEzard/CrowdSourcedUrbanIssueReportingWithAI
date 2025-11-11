@@ -47,6 +47,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="js/common.js"></script>
   <script>
+    // Check if user is authenticated - redirect to login if not
+    if (!localStorage.getItem('jwt')) {
+      window.location.href = 'login2.html';
+    }
+    
     fetch('includes/header.html')
       .then(response => response.text())
       .then(data => {
