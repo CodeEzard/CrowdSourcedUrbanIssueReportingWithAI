@@ -19,13 +19,9 @@ function apiUrl(path) {
 }
 
 function apiFetch(path, options = {}) {
-  // Add credentials only if we have a cross-origin base and intend to use cookies
-  const crossOrigin = API_BASE && !API_BASE.includes(window.location.host);
-  const merged = {
-    credentials: crossOrigin ? 'include' : 'same-origin',
-    ...options
-  };
-  return fetch(apiUrl(path), merged);
+  // We use Bearer tokens, not cookies, so do NOT force credentials on cross-origin
+  // to keep CORS simple (ACAO "*" works without ACAC when no credentials).
+  return fetch(apiUrl(path), options);
 }
 
 

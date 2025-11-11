@@ -212,6 +212,8 @@
           localStorage.setItem('jwt', data.access_token);
           localStorage.setItem('uc_user', googleName);
           localStorage.setItem('google_id', googleId);
+          // Persist backend base URL so other pages use the correct API origin
+          localStorage.setItem('api_base', 'https://urban-civic-9oxw.onrender.com');
           
           console.log('Authentication successful!');
           console.log('JWT stored, redirecting to index.html...');
@@ -240,7 +242,7 @@
           clearInterval(checkGoogleLoaded);
           
           google.accounts.id.initialize({
-            client_id: '1067521919891-n1p62ej8tch1bdo6tkt5ql22u8a2uu6h.apps.googleusercontent.com',
+            client_id: '810650529533-7te3qfj1hmsbitccqal9559vpkce003e.apps.googleusercontent.com',
             callback: handleCredentialResponse,
             auto_select: false
           });
