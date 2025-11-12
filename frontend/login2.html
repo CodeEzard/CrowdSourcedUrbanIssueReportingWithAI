@@ -115,11 +115,6 @@
     }
   </style>
   <script>
-    // If already authenticated, skip Google init and go straight to home
-    if (localStorage.getItem('jwt')) {
-      window.location.replace('index.html');
-    }
-
     // using explicit backend origin instead of window.location.origin
     const API_BASE = 'https://urban-civic-9oxw.onrender.com';
     let isProcessingSignIn = false;

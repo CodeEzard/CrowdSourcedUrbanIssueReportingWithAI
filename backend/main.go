@@ -120,22 +120,11 @@ func main() {
 	fileServer := http.FileServer(fileSystem)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// At root, if user has a valid JWT cookie, serve index.html; otherwise show login2.html
+		// Serve index.html at root; client code (localStorage) decides auth gating
 		if r.URL.Path == "/" || r.URL.Path == "" {
-			// default to login
-			target := filepath.Join(frontendDir, "login2.html")
-			// check cookie and validate token
-			if c, err := r.Cookie("access_token"); err == nil && c.Value != "" {
-				if _, err := jwtSvc.ValidateToken(c.Value); err == nil {
-					if idx := filepath.Join(frontendDir, "index.html"); true {
-						if _, err := os.Stat(idx); err == nil {
-							target = idx
-						}
-					}
-				}
-			}
-			if _, err := os.Stat(target); err == nil {
-				http.ServeFile(w, r, target)
+			idx := filepath.Join(frontendDir, "index.html")
+			if _, err := os.Stat(idx); err == nil {
+				http.ServeFile(w, r, idx)
 				return
 			}
 			http.NotFound(w, r)
