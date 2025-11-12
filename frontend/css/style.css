@@ -99,6 +99,10 @@ main {
   max-width: 1200px;
   margin: 0 auto;
 }
+#upload-status a {
+  color: white;
+  text-decoration: underline;
+}
 .hero {
   background: linear-gradient(90deg, var(--accent), var(--accent-dark));
   color: #fff;
