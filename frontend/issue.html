@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Urban Civic - Issues</title>
+  <title>Civic Issue - Issues</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
@@ -146,16 +146,11 @@
       if (!comment || !issueId) return;
       try {
         const resp = await postComment(String(issueId), comment);
-        const issue = issues.find(i => String(i.id) === String(issueId));
-        if (issue) {
-          const commentObj = {
-            user: resp.user?.name || currentUser,
-            text: resp.content || comment,
-            timestamp: resp.created_at || new Date().toISOString()
-          };
-          issue.comments.push(commentObj);
+        // Feed has already been refreshed by postComment(); use the authoritative server state
+        const updated = issues.find(i => String(i.id) === String(issueId));
+        if (updated) {
           showToast('Comment added!');
-          showModal(issue);
+          showModal(updated);
         }
         qs('#comment-input').value = '';
       } catch (err) {
@@ -225,21 +220,21 @@
       if (upvoteBtn) {
         const id = upvoteBtn.getAttribute('data-id');
         try {
+          // Prevent rapid double-clicks while request is in-flight
+          upvoteBtn.disabled = true;
+          upvoteBtn.classList.add('clicked');
           const res = await postUpvote(String(id));
           const created = res.upvoted === true;
-          const issue = issues.find(x => String(x.id) === String(id));
-          if (issue) {
-            issue.votes = (issue.votes || 0) + (created ? 1 : -1);
-            // Track upvote in-memory to adjust UI; do not persist to localStorage
-            upvotes[`${currentUser}_${id}`] = created;
-            upvoteBtn.classList.add('clicked');
-            setTimeout(() => upvoteBtn.classList.remove('clicked'), 300);
-            showToast(created ? 'Upvote added!' : 'Upvote removed');
-            renderIssues();
-          }
+          // Rely on fetchFeedFromServer() inside postUpvote to refresh counts and re-render via 'issuesUpdated'
+          upvotes[`${currentUser}_${id}`] = created;
+          setTimeout(() => upvoteBtn.classList.remove('clicked'), 300);
+          showToast(created ? 'Upvote added!' : 'Upvote removed');
         } catch (err) {
           console.warn('Upvote failed:', err);
           showToast('Failed to upvote: ' + (err.message || ''), 'error');
+        } finally {
+          // Re-enable in case of error; on success the list will re-render anyway
+          if (upvoteBtn) upvoteBtn.disabled = false;
         }
       }
       if (openBtn) {

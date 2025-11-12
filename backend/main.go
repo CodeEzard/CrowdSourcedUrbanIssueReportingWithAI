@@ -18,6 +18,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"strconv"
 
 	"github.com/redis/go-redis/v9"
 
@@ -89,6 +90,20 @@ func main() {
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
+	})
+
+	// Lightweight timing endpoint for performance diagnostics
+	// Usage: curl -w "\ntime_namelookup: %{time_namelookup}\n..." -o /dev/null https://host/api/endpoint
+	// Optional query param: ?delay_ms=NNN to simulate server-side delay in milliseconds
+	http.HandleFunc("/api/endpoint", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if d := r.URL.Query().Get("delay_ms"); d != "" {
+			if ms, err := strconv.Atoi(d); err == nil && ms > 0 {
+				time.Sleep(time.Duration(ms) * time.Millisecond)
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"ok":true,"endpoint":"/api/endpoint"}`))
 	})
 
 	// Serve API routes first, then serve the frontend static directory so that

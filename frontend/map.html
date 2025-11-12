@@ -161,22 +161,6 @@
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
       }).addTo(map);
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          position => {
-            const userLat = position.coords.latitude;
-            const userLon = position.coords.longitude;
-
-            map.setView([userLat, userLon], 14);
-
-            L.marker([userLat, userLon])
-              .addTo(map)
-              .bindPopup('You are here!')
-              .openPopup();
-          },
-          error => console.warn('Geolocation error:', error.message)
-        );
-      }
 
       const icons = {
         Pothole: L.divIcon({ className: 'custom-icon', html: '<i class="fas fa-road" style="color:#dc2626;font-size:24px;"></i>' }),

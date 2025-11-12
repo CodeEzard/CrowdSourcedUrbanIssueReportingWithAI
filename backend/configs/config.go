@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -54,6 +55,34 @@ func GetMLAPIURL() string {
 // GetImageClassificationAPIURL returns the configured image classification API URL (optional)
 func GetImageClassificationAPIURL() string {
 	return os.Getenv("IMAGE_CLASSIFICATION_API_URL")
+}
+
+// GetMLTextTimeout returns the timeout in milliseconds for text urgency ML calls.
+// Defaults to 5000ms previously; we allow extending. If invalid, fallback to 15000ms.
+func GetMLTextTimeout() time.Duration {
+	v := strings.TrimSpace(os.Getenv("ML_TEXT_TIMEOUT_MS"))
+	if v == "" {
+		return 15000 * time.Millisecond
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return 15000 * time.Millisecond
+	}
+	return time.Duration(n) * time.Millisecond
+}
+
+// GetMLImageTimeout returns the timeout in milliseconds for image classification calls.
+// Defaults to 20000ms if not set or invalid to accommodate larger image processing.
+func GetMLImageTimeout() time.Duration {
+	v := strings.TrimSpace(os.Getenv("ML_IMAGE_TIMEOUT_MS"))
+	if v == "" {
+		return 20000 * time.Millisecond
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return 20000 * time.Millisecond
+	}
+	return time.Duration(n) * time.Millisecond
 }
 
 // GetFeedScoringMode controls how /feed computes priority scores.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Urban Civic - Report</title>
+  <title>Civic Issue - Report</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
@@ -202,20 +202,31 @@
             categorySelect.value = result.predicted_class;
             showToast(`Category auto-filled: ${result.predicted_class}`, 'success');
           } else if (predicted.includes('pothole')) {
-            categorySelect.value = 'Road';
-            showToast('Category auto-filled: Road (for potholes)', 'success');
-          } else if (predicted.includes('pole') || predicted.includes('utility')) {
-            categorySelect.value = 'Utilities';
-            showToast('Category auto-filled: Utilities', 'success');
+            categorySelect.value = 'Pothole';
+            showToast('Category auto-filled: Pothole', 'success');
           } else if (predicted.includes('light') || predicted.includes('streetlight')) {
             categorySelect.value = 'Streetlight';
             showToast('Category auto-filled: Streetlight', 'success');
           } else if (predicted.includes('trash') || predicted.includes('garbage') || predicted.includes('waste')) {
             categorySelect.value = 'Garbage';
             showToast('Category auto-filled: Garbage', 'success');
-          } else if (predicted.includes('water') || predicted.includes('flood')) {
+          } else if (predicted.includes('water') || predicted.includes('flood') || predicted.includes('waterlogging')) {
             categorySelect.value = 'Waterlogging';
             showToast('Category auto-filled: Waterlogging', 'success');
+          }
+
+          // Non-destructive auto-fill for title/description if empty
+          const titleEl = qs('#r-title');
+          const descEl = qs('#r-desc');
+          const prettyClass = result.predicted_class.replace(/_/g, ' ');
+          if (titleEl && !titleEl.value.trim()) {
+            titleEl.value = `${prettyClass.charAt(0).toUpperCase()}${prettyClass.slice(1)} detected`;
+          }
+          if (descEl && !descEl.value.trim()) {
+            descEl.value = `Photo suggests a ${prettyClass} related civic issue.`;
+            // Trigger urgency predictor by dispatching input event (runs in parallel and non-blocking)
+            const evt = new Event('input', { bubbles: true });
+            descEl.dispatchEvent(evt);
           }
         } else {
           statusEl.innerHTML = '⚠️ Could not classify image, please select category manually';

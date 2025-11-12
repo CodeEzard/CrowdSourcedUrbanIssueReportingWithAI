@@ -42,29 +42,38 @@ func PredictUrgencyDetailed(text string) (int, float64, error) {
 		return 0, 0, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Use configured timeout for text ML
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetMLTextTimeout())
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", mlURL, bytes.NewReader(b))
 	if err != nil {
-		return 0, 0, err
+		// Fallback to heuristic if request cannot be created
+		score := heuristicScore(text)
+		return mapScoreToUrgency(score), score, nil
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{Timeout: 6 * time.Second}
+	client := &http.Client{Timeout: config.GetMLTextTimeout() + (2 * time.Second)}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, 0, err
+		// Network error -> fallback to heuristic
+		score := heuristicScore(text)
+		return mapScoreToUrgency(score), score, nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return 0, 0, errors.New("ml api returned non-2xx status")
+		// Non-2xx -> fallback to heuristic
+		score := heuristicScore(text)
+		return mapScoreToUrgency(score), score, nil
 	}
 
 	var parsed map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return 0, 0, err
+		// Malformed response -> fallback to heuristic
+		score := heuristicScore(text)
+		return mapScoreToUrgency(score), score, nil
 	}
 
 	// 1. Direct score field
@@ -113,7 +122,9 @@ func PredictUrgencyDetailed(text string) (int, float64, error) {
 	}
 
 	log.Println("ml: could not extract urgency from response", parsed)
-	return 0, 0, nil
+	// If ML can't provide, fallback to heuristic instead of returning zero
+	score := heuristicScore(text)
+	return mapScoreToUrgency(score), score, nil
 }
 
 // helper: map score to urgency bucket
@@ -188,7 +199,8 @@ func ClassifyImage(imageURL string) (string, error) {
 		return "", err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Use configured timeout for image classification (larger default)
+	ctx, cancel := context.WithTimeout(context.Background(), config.GetMLImageTimeout())
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, body)
@@ -197,7 +209,7 @@ func ClassifyImage(imageURL string) (string, error) {
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	client := &http.Client{Timeout: 12 * time.Second}
+	client := &http.Client{Timeout: config.GetMLImageTimeout() + (2 * time.Second)}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
