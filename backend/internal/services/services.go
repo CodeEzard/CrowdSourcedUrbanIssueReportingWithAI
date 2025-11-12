@@ -3,6 +3,7 @@ package services
 import (
 	"crowdsourcedurbanissuereportingwithai/backend/internal/repository"
 	"crowdsourcedurbanissuereportingwithai/backend/models"
+	"sort"
 	"log"
 
 	"github.com/google/uuid"
@@ -49,7 +50,50 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 	return s.PostRepo.ReportIssueViaPost(uid.String(), issueName, issueDesc, issueCat, postDesc, status, urgency, lat, lng, mediaURL, classifiedAs)
 }
 func (s *FeedService) GetFeed() ([]models.Post, error) {
-	return s.PostRepo.GetFeedPosts()
+	posts, err := s.PostRepo.GetFeedPosts()
+	if err != nil {
+		return nil, err
+	}
+
+	// Enrich each post with computed score based on description and comments.
+	for i := range posts {
+		p := &posts[i]
+		// accumulate scores for post description and each comment
+		var scores []float64
+
+		if p.Description != "" {
+			if urg, sc, err := PredictUrgencyDetailed(p.Description); err == nil {
+				// use computed urgency only for the transient field; don't overwrite DB urgency
+				p.ComputedUrgency = urg
+				scores = append(scores, sc)
+			}
+		}
+		for _, c := range p.Comments {
+			if c.Content == "" {
+				continue
+			}
+			if _, sc, err := PredictUrgencyDetailed(c.Content); err == nil {
+				scores = append(scores, sc)
+			}
+		}
+
+		// average score
+		var avg float64
+		if len(scores) > 0 {
+			var sum float64
+			for _, s := range scores { sum += s }
+			avg = sum / float64(len(scores))
+		} else {
+			avg = 0.0
+		}
+		p.Score = avg
+		// also set a computed urgency from the average as convenience
+		p.ComputedUrgency = mapScoreToUrgency(avg)
+	}
+
+	// Sort by computed score descending (higher urgency first)
+	sort.SliceStable(posts, func(i, j int) bool { return posts[i].Score > posts[j].Score })
+	return posts, nil
 }
 
 // AddComment wraps repository call to add a comment

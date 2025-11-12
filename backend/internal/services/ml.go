@@ -18,17 +18,28 @@ import (
 // PredictUrgency calls the configured ML API with the provided text and
 // attempts to extract an integer urgency score. Returns (0, nil) if no
 // ML API is configured. If the call fails, returns an error.
+// PredictUrgency retains backward-compatibility (integer only) by delegating
+// to PredictUrgencyDetailed and discarding the score.
 func PredictUrgency(text string) (int, error) {
+	urg, _, err := PredictUrgencyDetailed(text)
+	return urg, err
+}
+
+// PredictUrgencyDetailed returns both a discrete urgency bucket (1-3) and a
+// continuous score in [0,1]. Threshold mapping (>=0.8->3, >=0.5->2, else 1).
+// If ML API disabled it attempts heuristic scoring from text content.
+func PredictUrgencyDetailed(text string) (int, float64, error) {
 	mlURL := config.GetMLAPIURL()
 	if mlURL == "" {
-		return 0, nil
+		// Heuristic fallback when ML disabled
+		score := heuristicScore(text)
+		return mapScoreToUrgency(score), score, nil
 	}
 
-	// request body
 	reqBody := map[string]string{"text": text}
 	b, err := json.Marshal(reqBody)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -36,74 +47,119 @@ func PredictUrgency(text string) (int, error) {
 
 	req, err := http.NewRequestWithContext(ctx, "POST", mlURL, bytes.NewReader(b))
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 6 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return 0, errors.New("ml api returned non-2xx status")
+		return 0, 0, errors.New("ml api returned non-2xx status")
 	}
 
 	var parsed map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 
-	// Handle "label" field (primary response format from the model)
+	// 1. Direct score field
+	if scoreV, ok := parsed["score"]; ok {
+		if sc, ok := scoreV.(float64); ok {
+			urg := mapScoreToUrgency(sc)
+			log.Printf("ml: urgency prediction - score: %.2f -> urgency: %d\n", sc, urg)
+			return urg, sc, nil
+		}
+	}
+
+	// 2. Label mapping
 	if v, ok := parsed["label"]; ok {
 		if s, ok := v.(string); ok {
-			switch s {
+			label := strings.ToLower(strings.TrimSpace(s))
+			switch label {
 			case "critical", "urgent":
-				log.Printf("ml: urgency prediction - label: %s -> urgency: 3\n", s)
-				return 3, nil
+				return 3, 0.9, nil
 			case "moderate", "medium":
-				log.Printf("ml: urgency prediction - label: %s -> urgency: 2\n", s)
-				return 2, nil
+				return 2, 0.65, nil
 			case "low", "minor":
-				log.Printf("ml: urgency prediction - label: %s -> urgency: 1\n", s)
-				return 1, nil
+				return 1, 0.3, nil
 			}
 		}
 	}
 
-	// Fallback: try numeric urgency field
+	// 3. Numeric urgency -> mapped score
 	if v, ok := parsed["urgency"]; ok {
 		switch t := v.(type) {
 		case float64:
-			urgency := int(t)
-			log.Printf("ml: urgency prediction - numeric urgency: %d\n", urgency)
-			return urgency, nil
+			urg := int(t)
+			sc := mapNumericUrgencyToScore(urg)
+			return urg, sc, nil
 		case int:
-			log.Printf("ml: urgency prediction - numeric urgency: %d\n", t)
-			return t, nil
+			sc := mapNumericUrgencyToScore(t)
+			return t, sc, nil
 		}
 	}
 
-	// Fallback: try score/confidence field
-	if scoreV, ok := parsed["score"]; ok {
-		if sc, ok := scoreV.(float64); ok {
-			if sc >= 0.8 {
-				log.Printf("ml: urgency prediction - score: %.2f -> urgency: 3\n", sc)
-				return 3, nil
-			} else if sc >= 0.5 {
-				log.Printf("ml: urgency prediction - score: %.2f -> urgency: 2\n", sc)
-				return 2, nil
-			}
-			log.Printf("ml: urgency prediction - score: %.2f -> urgency: 1\n", sc)
-			return 1, nil
+	// 4. Classification / confidence alternative fields
+	if confV, ok := parsed["confidence"]; ok {
+		if cf, ok := confV.(float64); ok {
+			urg := mapScoreToUrgency(cf)
+			return urg, cf, nil
 		}
 	}
 
-	// No recognized field found
 	log.Println("ml: could not extract urgency from response", parsed)
-	return 0, nil
+	return 0, 0, nil
+}
+
+// helper: map score to urgency bucket
+func mapScoreToUrgency(score float64) int {
+	if score >= 0.8 {
+		return 3
+	} else if score >= 0.5 {
+		return 2
+	}
+	return 1
+}
+
+// helper: map integer urgency to representative score
+func mapNumericUrgencyToScore(urg int) float64 {
+	switch urg {
+	case 3:
+		return 0.85
+	case 2:
+		return 0.6
+	case 1:
+		return 0.3
+	default:
+		return 0.0
+	}
+}
+
+// heuristicScore provides a lightweight local estimation when ML API disabled.
+// Very naive keyword scoring; can be improved later.
+func heuristicScore(text string) float64 {
+	lower := strings.ToLower(text)
+	criticalTerms := []string{"emergency", "danger", "fire", "explosion", "injury", "critical", "urgent"}
+	moderateTerms := []string{"broken", "delay", "blocked", "leak", "issue", "problem", "trash"}
+	for _, w := range criticalTerms {
+		if strings.Contains(lower, w) {
+			return 0.85
+		}
+	}
+	for _, w := range moderateTerms {
+		if strings.Contains(lower, w) {
+			return 0.6
+		}
+	}
+	if strings.TrimSpace(lower) == "" {
+		return 0.0
+	}
+	return 0.3
 }
 
 // ClassifyImage calls the configured image classification API with the provided image URL

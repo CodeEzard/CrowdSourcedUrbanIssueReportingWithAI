@@ -48,6 +48,9 @@ type Post struct {
 	MediaURL     string    `gorm:"not null" json:"media_url"`
 	Comments     []Comment `gorm:"foreignKey:PostID" json:"comments"`
 	Upvotes      []Upvote  `gorm:"foreignKey:PostID" json:"upvotes"`
+	// Transient, computed at request time for ranking the feed
+	Score            float64 `gorm:"-" json:"score,omitempty"`
+	ComputedUrgency  int     `gorm:"-" json:"computed_urgency,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
