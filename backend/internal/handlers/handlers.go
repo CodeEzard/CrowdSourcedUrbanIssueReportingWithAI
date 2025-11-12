@@ -129,6 +129,10 @@ func (h *FeedHandler) ServeFeed(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch feed", http.StatusInternalServerError)
 		return
 	}
+	// Ensure clients do not cache the feed; we want fresh data on every refresh
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 	json.NewEncoder(w).Encode(posts)
 }

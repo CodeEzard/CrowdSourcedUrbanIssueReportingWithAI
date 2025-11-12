@@ -35,26 +35,38 @@ const defaultData = [
 
 
 
-// Removed persistent LocalStorage storage of issues.
-// Frontend now treats the backend as the source of truth for issues.
-function loadData() {
-  // intentionally return empty list — issues are fetched from the server
-  return [];
+// Local fallback storage for client-reported items to improve UX when
+// the backend returns an empty feed (e.g., fresh deployment or DB not configured).
+const LOCAL_REPORTS_KEY = 'uc_local_reports';
+function getLocalReports() {
+  try {
+    const s = localStorage.getItem(LOCAL_REPORTS_KEY);
+    if (!s) return [];
+    const arr = JSON.parse(s);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
 }
-
-function saveData(/*data*/) {
-  // no-op: we intentionally do not persist issues to localStorage
-  // to ensure server is the canonical store in deployed environments.
+function addLocalReport(report) {
+  try {
+    const arr = getLocalReports();
+    // De-duplicate by id
+    const id = String(report.id);
+    const filtered = arr.filter(r => String(r.id) !== id);
+    filtered.unshift(report);
+    // Keep only latest 20 for sanity
+    localStorage.setItem(LOCAL_REPORTS_KEY, JSON.stringify(filtered.slice(0, 20)));
+  } catch {}
 }
 
 // Fetch feed from backend /feed and map backend posts to frontend issue shape.
 async function fetchFeedFromServer() {
   try {
-    const resp = await apiFetch('/feed');
+    const ts = Date.now();
+    const resp = await apiFetch(`/feed?ts=${ts}`, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
     if (!resp.ok) throw new Error('Failed to fetch feed: ' + resp.status);
     const posts = await resp.json();
     if (!Array.isArray(posts)) throw new Error('Invalid feed format');
-    const mapped = posts.map(p => {
+  const mapped = posts.map(p => {
       // Backend post shape (models.Post) -> frontend issue shape
       const issue = p.issue || {};
       const user = p.user || {};
@@ -81,14 +93,21 @@ async function fetchFeedFromServer() {
         assignedAt: p.assigned_at || p.assignedAt || null
       };
     });
-    // Use server posts as authoritative source. Do not merge with local saved
-    // items or persist feed to localStorage in production/deployable mode.
-    issues = mapped;
+    // Prefer server posts. If server returns empty, fall back to local reports
+    // so users can still see what they submitted previously.
+    if (mapped.length === 0) {
+      issues = getLocalReports();
+    } else {
+      issues = mapped;
+    }
     document.dispatchEvent(new CustomEvent('issuesUpdated'));
     return issues;
   } catch (err) {
     console.warn('fetchFeedFromServer failed:', err);
-    return null;
+    // On failure, fallback to local reports to keep UI populated
+    issues = getLocalReports();
+    document.dispatchEvent(new CustomEvent('issuesUpdated'));
+    return issues;
   }
 }
 

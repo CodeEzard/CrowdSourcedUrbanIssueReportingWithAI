@@ -391,6 +391,8 @@
           assignedAt: posted.assigned_at || null
         };
         issues.unshift(issueObj);
+        // Save to local fallback so it appears in feed if backend feed is empty
+        try { addLocalReport(issueObj); } catch {}
         showToast('Report submitted to server successfully!');
       } catch (err) {
         console.warn('Report submit failed:', err);
