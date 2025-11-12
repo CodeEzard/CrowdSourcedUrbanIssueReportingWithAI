@@ -76,10 +76,7 @@
   <script>window.API_BASE = 'https://urban-civic-9oxw.onrender.com';</script>
   <script src="js/common.js"></script>
   <script>
-    // Check if user is authenticated - redirect to login if not
-    if (!localStorage.getItem('jwt')) {
-      window.location.href = 'login2.html';
-    }
+    // Allow viewing feed without login (public read-only). Protected actions will check auth.
    
     fetch('includes/header.html')
       .then(response => response.text())
@@ -225,6 +222,10 @@
           : '';
       }
       el.innerHTML = '';
+      if (!Array.isArray(issues) || issues.length === 0) {
+        el.innerHTML = '<div class="muted">No reports yet. Be the first to report an issue.</div>';
+        return;
+      }
       // Use backend order (already newest-first) and take top 5
       const sorted = [...issues].slice(0, 5);
       sorted.forEach(it => {

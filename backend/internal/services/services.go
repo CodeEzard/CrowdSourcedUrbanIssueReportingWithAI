@@ -1,6 +1,7 @@
 package services
 
 import (
+	config "crowdsourcedurbanissuereportingwithai/backend/configs"
 	"crowdsourcedurbanissuereportingwithai/backend/internal/repository"
 	"crowdsourcedurbanissuereportingwithai/backend/models"
 	"sort"
@@ -55,6 +56,8 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 		return nil, err
 	}
 
+	// Determine scoring mode
+	mode := config.GetFeedScoringMode() // ml | heuristic | none
 	// Enrich each post with computed score based on description and comments.
 	// Put a guardrail on total ML calls to keep the endpoint responsive.
 	const maxMLCalls = 50
@@ -66,7 +69,20 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 
 		if p.Description != "" {
 			if calls < maxMLCalls {
-				if urg, sc, err := PredictUrgencyDetailed(p.Description); err == nil {
+				var urg int
+				var sc float64
+				var err error
+				switch mode {
+				case "ml":
+					urg, sc, err = PredictUrgencyDetailed(p.Description)
+				case "heuristic":
+					sc = heuristicScore(p.Description)
+					urg = mapScoreToUrgency(sc)
+				default: // none
+					sc = mapNumericUrgencyToScore(p.Urgency)
+					urg = p.Urgency
+				}
+				if err == nil {
 				// use computed urgency only for the transient field; don't overwrite DB urgency
 				p.ComputedUrgency = urg
 				scores = append(scores, sc)
@@ -83,7 +99,19 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 			if c.Content == "" {
 				continue
 			}
-			if _, sc, err := PredictUrgencyDetailed(c.Content); err == nil {
+			var sc float64
+			var err error
+			switch mode {
+			case "ml":
+				_, sc, err = PredictUrgencyDetailed(c.Content)
+			case "heuristic":
+				sc = heuristicScore(c.Content)
+			default: // none
+				// we don't have comment urgency persisted; skip scoring
+				err = nil
+				sc = -1 // sentinel to skip
+			}
+			if err == nil && sc >= 0 {
 				scores = append(scores, sc)
 			}
 			calls++

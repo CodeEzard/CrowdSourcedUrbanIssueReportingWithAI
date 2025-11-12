@@ -2,6 +2,7 @@ package repository
 
 import (
 	"errors"
+	config "crowdsourcedurbanissuereportingwithai/backend/configs"
 	"crowdsourcedurbanissuereportingwithai/backend/models"
 
 	"github.com/google/uuid"
@@ -19,6 +20,9 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 // Feed: Get posts ordered by timeline (newest first), including comments and upvotes
 func (r *PostRepository) GetFeedPosts() ([]models.Post, error) {
 	var posts []models.Post
+	// Limit feed size for performance if configured
+	limit := config.GetFeedLimit()
+	if limit <= 0 { limit = 50 }
 	err := r.DB.
 		Preload("User").
 		Preload("Issue").
@@ -27,6 +31,7 @@ func (r *PostRepository) GetFeedPosts() ([]models.Post, error) {
 		}).
 		Preload("Upvotes").
 		Order("created_at DESC").
+		Limit(limit).
 		Find(&posts).Error
 	return posts, err
 }

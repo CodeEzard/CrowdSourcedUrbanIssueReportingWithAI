@@ -3,6 +3,8 @@ package config
 import (
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -52,4 +54,34 @@ func GetMLAPIURL() string {
 // GetImageClassificationAPIURL returns the configured image classification API URL (optional)
 func GetImageClassificationAPIURL() string {
 	return os.Getenv("IMAGE_CLASSIFICATION_API_URL")
+}
+
+// GetFeedScoringMode controls how /feed computes priority scores.
+// Values: "ml" (call external ML), "heuristic" (local keywords), "none" (map from stored urgency only).
+// Default: "none" for performance.
+func GetFeedScoringMode() string {
+	m := strings.ToLower(strings.TrimSpace(os.Getenv("FEED_SCORING_MODE")))
+	if m == "" {
+		return "none"
+	}
+	switch m {
+	case "ml", "heuristic", "none":
+		return m
+	default:
+		return "none"
+	}
+}
+
+// GetFeedLimit optionally caps number of posts returned by /feed to improve latency.
+// Default 50 if unset or invalid.
+func GetFeedLimit() int {
+	v := strings.TrimSpace(os.Getenv("FEED_LIMIT"))
+	if v == "" {
+		return 50
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil || n <= 0 {
+		return 50
+	}
+	return n
 }

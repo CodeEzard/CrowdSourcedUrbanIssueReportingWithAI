@@ -58,10 +58,7 @@
   <script>window.API_BASE = 'https://urban-civic-9oxw.onrender.com';</script>
   <script src="js/common.js"></script>
   <script>
-    // Check if user is authenticated - redirect to login if not
-    if (!localStorage.getItem('jwt')) {
-      window.location.href = 'login2.html';
-    }
+    // Allow viewing issues without login (public read-only). Protected actions will check auth.
     
     fetch('includes/header.html')
       .then(response => response.text())
