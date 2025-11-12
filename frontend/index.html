@@ -22,6 +22,7 @@
         <div>
           <div class="card">
             <h2>Recent Reports</h2>
+            <div id="feed-source" class="muted small" aria-live="polite"></div>
             <div id="recent-list" class="list" aria-live="polite" role="region" aria-label="Recent civic issues"></div>
           </div>
           <div style="height:20px"></div>
@@ -215,6 +216,14 @@
 
     function renderRecent() {
       const el = qs('#recent-list');
+      const srcEl = qs('#feed-source');
+      if (srcEl) {
+        const src = window.__feedSource;
+        srcEl.textContent = src === 'server' ? ''
+          : src === 'local-fallback' ? 'Showing locally cached reports (server returned no posts)'
+          : src === 'error-fallback' ? 'Showing cached reports (live feed unavailable)'
+          : '';
+      }
       el.innerHTML = '';
       // Use backend order (already newest-first) and take top 5
       const sorted = [...issues].slice(0, 5);
@@ -229,6 +238,7 @@
               <div class="muted small">${it.votes}▲</div>
             </div>
             <div class="muted small">${it.category} • ${it.location}</div>
+            ${typeof it.priority_level === 'number' ? `<div class="muted small">Priority: ${it.priority_level} ${typeof it.priority_score === 'number' ? `(${it.priority_score.toFixed(2)})` : ''}</div>` : ''}
             <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
             <div style="margin-top:12px">
               <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>

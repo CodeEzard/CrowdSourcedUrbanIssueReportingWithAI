@@ -15,6 +15,7 @@
     <section id="view-issues" class="view active">
       <div class="card">
         <h2>All Issues</h2>
+        <div id="feed-source-issues" class="muted small" aria-live="polite"></div>
         <div class="filters">
           <input id="search" placeholder="Search description or location" aria-label="Search issues">
           <select id="filter-category" aria-label="Filter by category">
@@ -169,6 +170,14 @@
     // Render issues list from global `issues` populated by fetchFeedFromServer()
     function renderIssues() {
       const el = qs('#issues-list');
+      const srcEl = qs('#feed-source-issues');
+      if (srcEl) {
+        const src = window.__feedSource;
+        srcEl.textContent = src === 'server' ? ''
+          : src === 'local-fallback' ? 'Showing locally cached reports (server returned no posts)'
+          : src === 'error-fallback' ? 'Showing cached reports (live feed unavailable)'
+          : '';
+      }
       // Show a placeholder if nothing loaded yet
       if (!Array.isArray(issues) || issues.length === 0) {
         el.innerHTML = '<div class="muted">No issues to display yet.</div>';
@@ -193,6 +202,7 @@
               <div class="muted small">${it.location}</div>
             </div>
             <div class="muted small">${it.category} • ${it.desc}</div>
+            ${typeof it.priority_level === 'number' ? `<div class="muted small">Priority: ${it.priority_level} ${typeof it.priority_score === 'number' ? `(${it.priority_score.toFixed(2)})` : ''}</div>` : ''}
             <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
             <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
               <div class="issue-actions">

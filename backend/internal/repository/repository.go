@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"crowdsourcedurbanissuereportingwithai/backend/models"
 
 	"github.com/google/uuid"
@@ -95,14 +96,16 @@ func (r *PostRepository) AddComment(userID, postID uuid.UUID, content string) (*
 func (r *PostRepository) ToggleUpvote(userID, postID uuid.UUID) (bool, error) {
 	var existing models.Upvote
 	err := r.DB.Where("post_id = ? AND user_id = ?", postID, userID).First(&existing).Error
-	if err == nil {
+	switch {
+	case err == nil:
 		// found existing - remove it
 		if err := r.DB.Delete(&existing).Error; err != nil {
 			return false, err
 		}
 		return false, nil
-	}
-	if err != nil && err != gorm.ErrRecordNotFound {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		// continue to create new upvote
+	default:
 		return false, err
 	}
 	// create new upvote

@@ -56,25 +56,37 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 	}
 
 	// Enrich each post with computed score based on description and comments.
+	// Put a guardrail on total ML calls to keep the endpoint responsive.
+	const maxMLCalls = 50
+	calls := 0
 	for i := range posts {
 		p := &posts[i]
 		// accumulate scores for post description and each comment
 		var scores []float64
 
 		if p.Description != "" {
-			if urg, sc, err := PredictUrgencyDetailed(p.Description); err == nil {
+			if calls < maxMLCalls {
+				if urg, sc, err := PredictUrgencyDetailed(p.Description); err == nil {
 				// use computed urgency only for the transient field; don't overwrite DB urgency
 				p.ComputedUrgency = urg
 				scores = append(scores, sc)
+				}
+				calls++
 			}
 		}
-		for _, c := range p.Comments {
+		// Sample only the first few comments per post for scoring to avoid long latency
+		maxComments := 5
+		for idx, c := range p.Comments {
+			if idx >= maxComments || calls >= maxMLCalls {
+				break
+			}
 			if c.Content == "" {
 				continue
 			}
 			if _, sc, err := PredictUrgencyDetailed(c.Content); err == nil {
 				scores = append(scores, sc)
 			}
+			calls++
 		}
 
 		// average score

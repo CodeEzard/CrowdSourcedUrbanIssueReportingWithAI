@@ -62,7 +62,10 @@ function addLocalReport(report) {
 async function fetchFeedFromServer() {
   try {
     const ts = Date.now();
+    console.time('feedFetch');
+    console.log(`[feed] fetching /feed at ts=${ts}`);
     const resp = await apiFetch(`/feed?ts=${ts}`, { cache: 'no-store', headers: { 'Accept': 'application/json' } });
+    console.log(`[feed] response status: ${resp.status}`);
     if (!resp.ok) throw new Error('Failed to fetch feed: ' + resp.status);
     const posts = await resp.json();
     if (!Array.isArray(posts)) throw new Error('Invalid feed format');
@@ -90,23 +93,31 @@ async function fetchFeedFromServer() {
         status: p.status || p.Status || 'open',
         reporter: user.name || user.email || (p.reporter || 'Unknown'),
         comments: comments,
-        assignedAt: p.assigned_at || p.assignedAt || null
+        assignedAt: p.assigned_at || p.assignedAt || null,
+        // consume backend transient fields if present
+        priority_score: typeof p.score === 'number' ? p.score : null,
+        priority_level: typeof p.computed_urgency === 'number' ? p.computed_urgency : null
       };
     });
     // Prefer server posts. If server returns empty, fall back to local reports
     // so users can still see what they submitted previously.
     if (mapped.length === 0) {
+      console.warn('[feed] server returned 0 posts; using local fallback reports');
       issues = getLocalReports();
+      window.__feedSource = 'local-fallback';
     } else {
       issues = mapped;
+      window.__feedSource = 'server';
     }
     document.dispatchEvent(new CustomEvent('issuesUpdated'));
+    console.timeEnd('feedFetch');
     return issues;
   } catch (err) {
     console.warn('fetchFeedFromServer failed:', err);
     // On failure, fallback to local reports to keep UI populated
     issues = getLocalReports();
     document.dispatchEvent(new CustomEvent('issuesUpdated'));
+    window.__feedSource = 'error-fallback';
     return issues;
   }
 }
