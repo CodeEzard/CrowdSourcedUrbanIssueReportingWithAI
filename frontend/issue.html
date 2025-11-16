@@ -265,6 +265,11 @@
         document.dispatchEvent(new CustomEvent('issuesUpdated'));
       }
     })();
+
+    // Keep issues list live by refreshing feed every 20 seconds
+    setInterval(() => {
+      fetchFeedFromServer().catch(() => {});
+    }, 20000);
   </script>
 </body>
 </html>

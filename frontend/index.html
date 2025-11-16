@@ -336,6 +336,12 @@
       }
     })();
 
+    // Lightweight auto-refresh to keep priority scores live
+    // Fetches fresh feed every 20 seconds without blocking the UI
+    setInterval(() => {
+      fetchFeedFromServer().catch(() => {});
+    }, 20000);
+
     
     document.addEventListener('issuesUpdated', () => {
       // `issues` is kept in-memory and updated by fetchFeedFromServer.
