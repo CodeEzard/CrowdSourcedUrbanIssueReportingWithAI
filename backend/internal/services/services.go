@@ -6,6 +6,7 @@ import (
 	"crowdsourcedurbanissuereportingwithai/backend/models"
 	"sort"
 	"log"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -31,12 +32,15 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 	if err != nil {
 		return nil, err
 	}
-	// If an ML API is configured, attempt to predict urgency from the post description.
-	if pred, err := PredictUrgency(postDesc); err == nil && pred != 0 {
-		urgency = pred
-	} else if err != nil {
-		// non-fatal: log and continue with provided urgency
-		// PredictUrgency logs details; we don't block reporting if ML fails.
+	// Predict urgency and score from the description; use this score to initialize incremental scoring
+	var initScore float64 = 0.0
+	if u, sc, err := PredictUrgencyDetailed(postDesc); err == nil {
+		if u != 0 { urgency = u }
+		initScore = sc
+	} else {
+		// heuristics fallback is embedded in PredictUrgencyDetailed; call again to get a score
+		_, sc, _ := PredictUrgencyDetailed(postDesc)
+		initScore = sc
 	}
 
 	// If an image classification API is configured, attempt to classify the image.
@@ -48,7 +52,15 @@ func (s *ReportService) ReportIssueViaPost(userID, issueName, issueDesc, issueCa
 		// ClassifyImage logs details; we don't block reporting if classification fails.
 	}
 
-	return s.PostRepo.ReportIssueViaPost(uid.String(), issueName, issueDesc, issueCat, postDesc, status, urgency, lat, lng, mediaURL, classifiedAs)
+	post, err := s.PostRepo.ReportIssueViaPost(uid.String(), issueName, issueDesc, issueCat, postDesc, status, urgency, lat, lng, mediaURL, classifiedAs)
+	if err != nil {
+		return nil, err
+	}
+	// Initialize incremental score with the description score
+	if err := s.PostRepo.UpdatePostScoreAdd(post.ID, initScore, 1); err != nil {
+		log.Printf("warning: failed to initialize post score: %v", err)
+	}
+	return post, nil
 }
 func (s *FeedService) GetFeed() ([]models.Post, error) {
 	posts, err := s.PostRepo.GetFeedPosts()
@@ -57,14 +69,39 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 	}
 
 	// Determine scoring mode
-	mode := config.GetFeedScoringMode() // ml | heuristic | none
-	// Enrich each post with computed score based on description and comments.
+	mode := config.GetFeedScoringMode() // ml | heuristic | none | incremental
+
+	if mode == "incremental" {
+		// Use persisted incremental average per post and blend with upvote presence
+		for i := range posts {
+			p := &posts[i]
+			cnt := p.ScoreCount
+			if cnt <= 0 { cnt = 1 }
+			mlAvg := p.ScoreSum / float64(cnt)
+			if mlAvg < 0 { mlAvg = 0 }
+			if mlAvg > 1 { mlAvg = 1 }
+			upvotePresence := 0.0
+			if len(p.Upvotes) > 0 { upvotePresence = 1.0 }
+			p.Score = 0.8*mlAvg + 0.2*upvotePresence
+			p.ComputedUrgency = mapScoreToUrgency(mlAvg)
+		}
+		sort.SliceStable(posts, func(i, j int) bool { return posts[i].Score > posts[j].Score })
+		return posts, nil
+	}
+	// Pre-compute max upvotes for normalization across the feed
+	maxUpvotes := 0
+	for i := range posts {
+		if n := len(posts[i].Upvotes); n > maxUpvotes { maxUpvotes = n }
+	}
+
+	// Enrich each post with computed ml_score based on description and comments, then
+	// blend with normalized upvotes: score = 0.8*ml_score + 0.2*votes_norm
 	// Put a guardrail on total ML calls to keep the endpoint responsive.
 	const maxMLCalls = 50
 	calls := 0
 	for i := range posts {
 		p := &posts[i]
-		// accumulate scores for post description and each comment
+		// accumulate ML/heuristic scores for post description and each comment (range: 0..1)
 		var scores []float64
 
 		if p.Description != "" {
@@ -83,9 +120,9 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 					urg = p.Urgency
 				}
 				if err == nil {
-				// use computed urgency only for the transient field; don't overwrite DB urgency
-				p.ComputedUrgency = urg
-				scores = append(scores, sc)
+					// use computed urgency only for the transient field; don't overwrite DB urgency
+					p.ComputedUrgency = urg
+					scores = append(scores, sc)
 				}
 				calls++
 			}
@@ -117,18 +154,24 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 			calls++
 		}
 
-		// average score
-		var avg float64
+		// average ml score (0..1)
+		var mlAvg float64
 		if len(scores) > 0 {
 			var sum float64
 			for _, s := range scores { sum += s }
-			avg = sum / float64(len(scores))
+			mlAvg = sum / float64(len(scores))
 		} else {
-			avg = 0.0
+			mlAvg = 0.0
 		}
-		p.Score = avg
-		// also set a computed urgency from the average as convenience
-		p.ComputedUrgency = mapScoreToUrgency(avg)
+		// upvote presence (0 or 1)
+		var upvotePresence float64
+		if len(p.Upvotes) > 0 { upvotePresence = 1.0 } else { upvotePresence = 0.0 }
+
+		// final blended score per spec (independent of upvote count)
+		blended := 0.8*mlAvg + 0.2*upvotePresence
+		p.Score = blended
+		// computed urgency from mlAvg only (not from votes)
+		p.ComputedUrgency = mapScoreToUrgency(mlAvg)
 	}
 
 	// Sort by computed score descending (higher urgency first)
@@ -149,6 +192,14 @@ func (s *ReportService) AddComment(userID, postID, content string) (*models.Comm
 	comment, err := s.PostRepo.AddComment(uid, pid, content)
 	if err != nil {
 		return nil, err
+	}
+
+	// Incremental scoring: add this comment's score to the post average
+	if strings.TrimSpace(content) != "" {
+		_, sc, _ := PredictUrgencyDetailed(content)
+		if err := s.PostRepo.UpdatePostScoreAdd(pid, sc, 1); err != nil {
+			log.Printf("warning: failed to update post score after comment: %v", err)
+		}
 	}
 
 	// IMPORTANT: Recalculate post urgency based on this new comment
@@ -190,9 +241,23 @@ func (s *ReportService) UpdatePostUrgencyFromComments(postID uuid.UUID) error {
 
 	// Calculate urgency scores for each comment
 	var commentScores []float64
+	mode := config.GetFeedScoringMode()
 	for _, comment := range comments {
-		score := CalculateCommentUrgency(comment.Content)
-		commentScores = append(commentScores, score.Score)
+		if strings.TrimSpace(comment.Content) == "" { continue }
+		switch mode {
+		case "ml":
+			// Use ML score (0..1) scaled to 0..3 to match existing aggregator
+			_, sc, _ := PredictUrgencyDetailed(comment.Content)
+			commentScores = append(commentScores, sc*3.0)
+		case "heuristic":
+			// Use local heuristic (0..1) scaled to 0..3
+			sc := heuristicScore(comment.Content)
+			commentScores = append(commentScores, sc*3.0)
+		default:
+			// none: fallback to simple keyword-based calculator (already ~0..3)
+			s := CalculateCommentUrgency(comment.Content)
+			commentScores = append(commentScores, s.Score)
+		}
 	}
 
 	// Calculate the new urgency level

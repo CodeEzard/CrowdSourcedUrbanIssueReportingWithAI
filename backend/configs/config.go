@@ -94,11 +94,31 @@ func GetFeedScoringMode() string {
 		return "none"
 	}
 	switch m {
-	case "ml", "heuristic", "none":
+	case "ml", "heuristic", "none", "incremental":
 		return m
 	default:
 		return "none"
 	}
+}
+
+// GetUpvoteScore returns the contribution (0..1) each upvote adds to the post score when using incremental mode.
+// Default 0.6; clamp to [0.0, 1.0].
+func GetUpvoteScore() float64 {
+	v := strings.TrimSpace(os.Getenv("UPVOTE_SCORE"))
+	if v == "" {
+		return 0.6
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return 0.6
+	}
+	if f < 0 {
+		return 0
+	}
+	if f > 1 {
+		return 1
+	}
+	return f
 }
 
 // GetFeedLimit optionally caps number of posts returned by /feed to improve latency.

@@ -48,6 +48,9 @@ type Post struct {
 	MediaURL     string    `gorm:"not null" json:"media_url"`
 	Comments     []Comment `gorm:"foreignKey:PostID" json:"comments"`
 	Upvotes      []Upvote  `gorm:"foreignKey:PostID" json:"upvotes"`
+	// Persistent incremental scoring fields
+	ScoreSum     float64   `gorm:"default:0" json:"-"`
+	ScoreCount   int       `gorm:"default:0" json:"-"`
 	// Transient, computed at request time for ranking the feed
 	Score            float64 `gorm:"-" json:"score,omitempty"`
 	ComputedUrgency  int     `gorm:"-" json:"computed_urgency,omitempty"`

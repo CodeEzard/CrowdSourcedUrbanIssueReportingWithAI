@@ -78,6 +78,28 @@ func (r *PostRepository) ReportIssueViaPost(userID, issueName, issueDesc, issueC
 	return &post, nil
 }
 
+// UpdatePostScoreAdd increments (or decrements) score_sum and score_count atomically for a post.
+// deltaCount can be negative (e.g., when removing an upvote) but will not reduce below 1 if description initialized.
+func (r *PostRepository) UpdatePostScoreAdd(postID uuid.UUID, deltaScore float64, deltaCount int) error {
+	var p models.Post
+	if err := r.DB.First(&p, "id = ?", postID).Error; err != nil {
+		return err
+	}
+	// Initialize baseline if not set
+	sum := p.ScoreSum + deltaScore
+	cnt := p.ScoreCount + deltaCount
+	if cnt < 1 {
+		cnt = 1
+	}
+	if sum < 0 {
+		sum = 0
+	}
+	return r.DB.Model(&models.Post{}).Where("id = ?", postID).Updates(map[string]interface{}{
+		"score_sum":   sum,
+		"score_count": cnt,
+	}).Error
+}
+
 // AddComment creates a comment on a post by a user
 func (r *PostRepository) AddComment(userID, postID uuid.UUID, content string) (*models.Comment, error) {
 	comment := models.Comment{
