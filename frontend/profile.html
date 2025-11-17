@@ -18,7 +18,7 @@
           <div class="card" id="profile-card">
             <h2 id="profile-title">Your Profile</h2>
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-              <img id="profile-pic" class="profile-pic" src="data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\"><circle cx=\"24\" cy=\"24\" r=\"24\" fill=\"%23e6eef6\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">User</text></svg>" alt="Profile picture">
+              <img id="profile-pic" class="profile-pic" src="data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\"><circle cx=\"24\" cy=\"24\" r=\"24\" fill=\"%23e6eef6\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">User</text></svg>
               <div>
                 <div id="profile-meta" class="muted small"></div>
                 <label for="profile-pic-upload" class="btn" style="margin-top:8px">Change Picture</label>
@@ -62,6 +62,15 @@
   <script>window.API_BASE = 'https://urban-civic-9oxw.onrender.com';</script>
   <script src="js/common.js"></script>
   <script>
+    // Ensure current user name and role are available (fallbacks if common.js not yet set)
+    const currentUser = localStorage.getItem('uc_user') || 'User';
+    let role = localStorage.getItem('uc_role') || 'user';
+    let profilePic = localStorage.getItem('uc_profile_pic') || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><circle cx='24' cy='24' r='24' fill='%23e6eef6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23004d40'>" + (currentUser.substring(0,1).toUpperCase()) + "</text></svg>";
+    // Update heading immediately to reflect username (works even if DOMContentLoaded already fired)
+    (function updateTitleNow() {
+      const titleEl = document.getElementById('profile-title');
+      if (titleEl) titleEl.textContent = (currentUser || 'User') + ' — Profile';
+    })();
     // Check if user is authenticated - redirect to login if not
     if (!localStorage.getItem('jwt')) {
       window.location.href = 'login2.html';
@@ -168,7 +177,7 @@
 
     function renderProfile() {
       qs('#profile-pic').src = profilePic;
-      qs('#profile-meta').textContent = `Role: ${role} • User: ${currentUser} • Reports: ${issues.filter(i => i.reporter === currentUser).length} • Upvotes Given: ${Object.keys(upvotes).filter(k => k.startsWith(currentUser)).length}`;
+      qs('#profile-meta').textContent = `User: ${currentUser} • Role: ${role} • Reports: ${issues.filter(i => i.reporter === currentUser).length} • Upvotes Given: ${Object.keys(upvotes).filter(k => k.startsWith(currentUser + '_')).length}`;
       qs('#profile-issues').innerHTML = '';
       const mine = issues.filter(i => i.reporter === currentUser);
       if (mine.length === 0) {

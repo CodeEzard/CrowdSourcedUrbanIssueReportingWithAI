@@ -10,8 +10,8 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: "Inter", Arial, sans-serif;
-      background: #0e0e0e;
-      color: #fff;
+      background: linear-gradient(180deg, #ffffff 0%, #f1fff3 60%);
+      color: #063a2d;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
@@ -32,8 +32,12 @@
       justify-content: space-between;
       align-items: center;
       padding: 20px 50px;
-      position: relative;
-      z-index: 1;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #eafff3; /* light green header */
+      border-bottom: 1px solid rgba(6,58,45,0.08);
+      box-shadow: 0 2px 12px rgba(6,58,45,0.06);
     }
 
     nav .logo {
@@ -43,17 +47,29 @@
 
     .btn {
       padding: 10px 18px;
-      border: 1px solid #555;
+      border: 1px solid rgba(6,58,45,0.12);
       border-radius: 8px;
-      background: transparent;
-      color: #fff;
+      background: #ffffff;
+      color: #063a2d;
       cursor: pointer;
-      transition: 0.3s;
+      transition: 0.2s;
+      box-shadow: 0 2px 6px rgba(6,58,45,0.06);
     }
 
     .btn:hover {
-      background: linear-gradient(90deg, #ff6a00, #ee0979);
-      border: none;
+      background: linear-gradient(90deg, #e6fff0, #d8ffea);
+      border-color: rgba(6,58,45,0.18);
+    }
+
+    /* Emphasize header button for contrast on the light header */
+    nav .btn {
+      background: #0f8f67;
+      color: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 2px 8px rgba(15,143,103,0.18);
+    }
+    nav .btn:hover {
+      background: #12a877;
     }
 
     .login-container {
@@ -68,14 +84,14 @@
     }
 
     .login-box {
-      background: rgb(103 91 91 / 95%);
-      padding: 60px 50px;
-      border-radius: 20px;
-      max-width: 450px;
+      background: rgba(255,255,255,0.95);
+      padding: 50px 40px;
+      border-radius: 16px;
+      max-width: 480px;
       width: 100%;
-      transition: all 0.5s ease;
+      transition: all 0.35s ease;
       position: relative;
-      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(6,58,45,0.06);
     }
 
     .login-box h2 {
@@ -83,8 +99,8 @@
     }
 
     .login-box p {
-      color: #bbb;
-      margin-bottom: 25px;
+      color: #2b6b57;
+      margin-bottom: 18px;
     }
 
     .g_id_signin {
@@ -98,20 +114,20 @@
       display: flex;
       justify-content: space-between;
       flex-wrap: wrap;
-      color: #888;
+      color: #2b6b57;
       font-size: 0.9rem;
       position: relative;
       z-index: 1;
     }
 
     footer a {
-      color: #aaa;
+      color: #2b6b57;
       text-decoration: none;
       margin-right: 20px;
     }
 
     footer a:hover {
-      color: #fff;
+      color: #075437;
     }
   </style>
   <script>
@@ -232,7 +248,7 @@
 </head>
 <body>
 
-<canvas id="bubble-canvas"></canvas>
+<!-- Decorative background removed; using light green / white theme -->
 
 <nav>
   <div class="logo">Civic <span style="color:#ee0979">Issue</span></div>
@@ -261,66 +277,7 @@
   </div>
 </div>
 
-<script>
-  const canvas = document.getElementById("bubble-canvas");
-  const ctx = canvas.getContext("2d");
-
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  let bubbles = [];
-  const numBubbles = 60;
-
-  class Bubble {
-    constructor() {
-      this.x = Math.random() * canvas.width;
-      this.y = Math.random() * canvas.height;
-      this.radius = Math.random() * 8 + 2;
-      this.speedY = Math.random() * -1 - 0.2;
-      this.alpha = Math.random() * 0.5 + 0.2;
-    }
-
-    update() {
-      this.y += this.speedY;
-      if (this.y + this.radius < 0) {
-        this.y = canvas.height + this.radius;
-        this.x = Math.random() * canvas.width;
-      }
-    }
-
-    draw() {
-      ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  function initBubbles() {
-    bubbles = [];
-    for (let i = 0; i < numBubbles; i++) {
-      bubbles.push(new Bubble());
-    }
-  }
-
-  function animateBubbles() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (let bubble of bubbles) {
-      bubble.update();
-      bubble.draw();
-    }
-    requestAnimationFrame(animateBubbles);
-  }
-
-  window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    initBubbles();
-  });
-
-  initBubbles();
-  animateBubbles();
-</script>
+<!-- Background animation removed; no additional scripts here -->
 
 </body>
 </html>
