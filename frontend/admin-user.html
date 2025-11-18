@@ -7,38 +7,101 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--card-bg, #f8fafc);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+      margin-bottom: 16px;
+    }
+    .profile-header:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .profile-pic {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 3px solid var(--accent, #0d9488);
+      object-fit: cover;
+      background-color: #fff;
+    }
+    .profile-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .profile-info h2 {
+      margin: 0;
+      color: var(--text, #0f172a);
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .profile-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 8px 16px;
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .profile-meta i {
+      color: var(--accent, #0d9488);
+      margin-right: 6px;
+    }
+  </style>
+
 </head>
 <body>
   <div id="header-placeholder"></div>
 
-  <main id="app">
+  main id="app">
     <section id="view-profile" class="view active">
       <div class="grid">
         <div>
           <div class="card" id="profile-card">
-            <h2 id="profile-title"></h2>
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-              <img id="profile-pic" class="profile-pic" src="data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\"><circle cx=\"24\" cy=\"24\" r=\"24\" fill=\"%23e6eef6\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">User</text></svg>" alt="Profile picture">
-              <div>
-                <div id="profile-meta" class="muted small"></div>
-                <label for="profile-pic-upload" class="btn" style="margin-top:8px">Change Picture</label>
+            <h2 id="profile-title">Your Profile</h2>
+
+            <!-- 💎 Improved Profile Header -->
+            <div class="profile-header">
+              <img id="profile-pic" class="profile-pic" 
+                   src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><circle cx='24' cy='24' r='24' fill='%23e6eef6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23004d40'>U</text></svg>" 
+                   alt="Profile picture">
+              <div class="profile-info">
+                <h2 id="profile-name">User Name</h2>
+                <div id="profile-meta" class="profile-meta">
+                  <div><i class="fa-solid fa-user-shield"></i> Role: <span id="meta-role"></span></div>
+                  <div><i class="fa-solid fa-id-badge"></i> Username: <span id="meta-user"></span></div>
+                  <div><i class="fa-solid fa-flag"></i> Reports: <span id="meta-reports"></span></div>
+                  <div><i class="fa-solid fa-arrow-up"></i> Upvotes: <span id="meta-upvotes"></span></div>
+                </div>
+                <label for="profile-pic-upload" class="btn" style="margin-top:10px;width:max-content;">Change Picture</label>
                 <input type="file" id="profile-pic-upload" accept="image/*" style="display:none">
               </div>
             </div>
+            <!-- End Header -->
+
             <div id="profile-issues" class="list"></div>
           </div>
         </div>
+
         <aside>
           <div class="card">
             <h3>Quick Filters</h3>
-            <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px" id="quick-filters">
-              <!-- Filters will be dynamically added based on role -->
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+              <button class="btn" id="my-reports-btn">My Reports</button>
+              <button class="btn secondary" id="upvoted-btn">Upvoted</button>
             </div>
           </div>
         </aside>
       </div>
     </section>
 
+    <!-- Modal -->
     <div id="issue-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-content">
         <button class="modal-close" id="modal-close" aria-label="Close modal">✕</button>
@@ -58,6 +121,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>window.API_BASE = 'https://urban-civic-9oxw.onrender.com';</script>
   <script src="js/common.js"></script>
   <script>
     fetch('includes/header.html')
@@ -200,11 +264,14 @@
         showToast('Failed to add comment: ' + (err.message || ''), 'error');
       }
     });
-
+    qs('#profile-name').textContent = currentUser;
     function renderProfile() {
       qs('#profile-title').textContent = role === 'admin' ? 'Admin Dashboard' : 'Your Profile';
       qs('#profile-pic').src = profilePic;
-      qs('#profile-meta').textContent = `Role: ${role} • User: ${currentUser} • Reports: ${issues.filter(i => i.reporter === currentUser).length} • Upvotes Given: ${Object.keys(upvotes).filter(k => k.startsWith(currentUser)).length}`;
+      qs('#meta-role').textContent = role;
+      qs('#meta-user').textContent = currentUser;
+      qs('#meta-reports').textContent = issues.filter(i => i.reporter === currentUser).length;
+      qs('#meta-upvotes').textContent = Object.keys(upvotes).filter(k => k.startsWith(currentUser)).length;
       
       // Set quick filters based on role
       const filters = qs('#quick-filters');
