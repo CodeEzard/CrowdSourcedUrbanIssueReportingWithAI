@@ -16,6 +16,7 @@ import (
 type contextKey string
 
 const ContextUserID contextKey = "user_id"
+const ContextUserRole contextKey = "user_role"
 
 type errorResp struct {
 	Error string `json:"error"`
@@ -78,8 +79,11 @@ func AuthMiddleware(jwtSvc *JWTService, rdb *redis.Client) func(http.Handler) ht
 				}
 				if uid, err := jwtSvc.ValidateToken(cnd.val); err == nil {
 					log.Printf("auth: accepted token source=%s method=%s path=%s remote=%s", cnd.src, r.Method, r.URL.Path, r.RemoteAddr)
-					// inject into context and proceed
+					// Extract role from token
+					role, _ := jwtSvc.GetRoleFromToken(cnd.val)
+					// inject user_id and role into context and proceed
 					ctx := context.WithValue(r.Context(), ContextUserID, uid)
+					ctx = context.WithValue(ctx, ContextUserRole, role)
 					next.ServeHTTP(w, r.WithContext(ctx))
 					validated = true
 					break
@@ -104,4 +108,29 @@ func GetUserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	}
 	uid, ok := v.(uuid.UUID)
 	return uid, ok
+}
+
+// GetUserRoleFromContext retrieves the user role from the request context.
+func GetUserRoleFromContext(ctx context.Context) (string, bool) {
+	v := ctx.Value(ContextUserRole)
+	if v == nil {
+		return "", false
+	}
+	role, ok := v.(string)
+	return role, ok
+}
+
+// AdminMiddleware returns an http middleware that checks if the user has admin role.
+// It should be used after AuthMiddleware to ensure user is authenticated.
+// If user is not admin, returns 403 Forbidden.
+func AdminMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role, ok := GetUserRoleFromContext(r.Context())
+		if !ok || role != "admin" {
+			log.Printf("admin: access denied for role=%s path=%s remote=%s", role, r.URL.Path, r.RemoteAddr)
+			writeJSONError(w, "admin access required", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }

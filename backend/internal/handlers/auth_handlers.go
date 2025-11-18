@@ -129,8 +129,20 @@ func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Issue JWT for the user
-	token, err := h.JWTService.GenerateToken(user.ID)
+	// Issue JWT for the user with appropriate role
+	role := "user"
+	// Check if user is admin (hardcoded list for now)
+	adminEmails := map[string]bool{
+		"admin@example.com":          true,
+		"shreshtha231b322@gmail.com": true,
+		"231b328@juetguna.in":        true,
+		"231b315@juetguna.in":        true,
+		// Add more admin emails as needed
+	}
+	if adminEmails[user.Email] {
+		role = "admin"
+	}
+	token, err := h.JWTService.GenerateTokenWithRole(user.ID, role)
 	if err != nil {
 		http.Error(w, "failed to generate token", http.StatusInternalServerError)
 		return
@@ -174,8 +186,19 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// generate token
-	token, err := h.JWTService.GenerateToken(user.ID)
+	// generate token with user role (default)
+	role := "user"
+	// Check if user is admin
+	adminEmails := map[string]bool{
+		"admin@example.com":   true,
+		"231b322@juetguna.in": true,
+		"231b328@juetguna.in": true,
+		"231b315@juetguna.in": true,
+	}
+	if adminEmails[user.Email] {
+		role = "admin"
+	}
+	token, err := h.JWTService.GenerateTokenWithRole(user.ID, role)
 	if err != nil {
 		http.Error(w, "failed to generate token", http.StatusInternalServerError)
 		return
@@ -218,7 +241,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
-	token, err := h.JWTService.GenerateToken(user.ID)
+	role := "user"
+	// Check if user is admin
+	adminEmails := map[string]bool{
+		"admin@example.com": true,
+	}
+	if adminEmails[user.Email] {
+		role = "admin"
+	}
+	token, err := h.JWTService.GenerateTokenWithRole(user.ID, role)
 	if err != nil {
 		http.Error(w, "failed to generate token", http.StatusInternalServerError)
 		return

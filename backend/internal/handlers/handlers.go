@@ -115,6 +115,61 @@ func (h *ReportHandler) ServeUpvote(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"upvoted": created})
 }
 
+// Admin: Update post status (open -> closed, etc)
+type StatusUpdateRequest struct {
+	PostID  string `json:"post_id"`
+	Status  string `json:"status"` // "open", "inprogress", "closed"
+	Notes   string `json:"notes"`  // optional notes from admin
+}
+
+func (h *ReportHandler) ServeUpdateStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	var req StatusUpdateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	
+	if req.PostID == "" || req.Status == "" {
+		http.Error(w, "Missing post_id or status", http.StatusBadRequest)
+		return
+	}
+	
+	// Verify user is authenticated (middleware ensures this for protected routes)
+	_, ok := auth.GetUserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	
+	post, err := h.ReportService.UpdatePostStatus(req.PostID, req.Status, req.Notes)
+	if err != nil {
+		http.Error(w, "Failed to update status: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(post)
+}
+
+// Admin: Get all issues for admin dashboard
+func (h *FeedHandler) ServeAdminFeed(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	
+	// Get filter params from query (optional)
+	status := r.URL.Query().Get("status") // "open", "inprogress", "closed"
+	limit := 100
+	
+	posts, err := h.FeedService.GetAllPostsForAdmin(status, limit)
+	if err != nil {
+		http.Error(w, "Failed to fetch posts", http.StatusInternalServerError)
+		return
+	}
+	
+	json.NewEncoder(w).Encode(posts)
+}
+
 type FeedHandler struct {
 	FeedService *services.FeedService
 }

@@ -158,6 +158,19 @@ func (r *PostRepository) UpdatePostUrgency(postID uuid.UUID, newUrgency int) err
 	return r.DB.Model(&models.Post{}).Where("id = ?", postID).Update("urgency", newUrgency).Error
 }
 
+// UpdatePostStatus updates the status of a post (e.g., "open" -> "closed")
+func (r *PostRepository) UpdatePostStatus(postID uuid.UUID, status string) (*models.Post, error) {
+	post := &models.Post{}
+	if err := r.DB.Model(post).Where("id = ?", postID).Update("status", status).Error; err != nil {
+		return nil, err
+	}
+	// Reload the post with preloads
+	if err := r.DB.Preload("User").Preload("Issue").Preload("Comments").Preload("Upvotes").First(post, "id = ?", postID).Error; err != nil {
+		return nil, err
+	}
+	return post, nil
+}
+
 // GetPost fetches a single post by ID
 func (r *PostRepository) GetPost(postID uuid.UUID) (*models.Post, error) {
 	var post models.Post

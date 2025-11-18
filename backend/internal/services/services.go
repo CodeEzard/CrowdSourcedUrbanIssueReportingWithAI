@@ -179,6 +179,30 @@ func (s *FeedService) GetFeed() ([]models.Post, error) {
 	return posts, nil
 }
 
+// GetAllPostsForAdmin fetches all posts (unfiltered by score) for admin dashboard
+// Supports optional status filter ("open", "inprogress", "closed")
+func (f *FeedService) GetAllPostsForAdmin(statusFilter string, limit int) ([]models.Post, error) {
+	posts, err := f.PostRepo.GetFeedPosts()
+	if err != nil {
+		return nil, err
+	}
+	
+	// Filter by status if provided
+	if statusFilter != "" {
+		var filtered []models.Post
+		for _, p := range posts {
+			if p.Status == statusFilter {
+				filtered = append(filtered, p)
+			}
+		}
+		posts = filtered
+	}
+	
+	// For admin, we still compute scores but don't sort by them
+	// Just return posts grouped by status for easy viewing
+	return posts, nil
+}
+
 // AddComment wraps repository call to add a comment
 func (s *ReportService) AddComment(userID, postID, content string) (*models.Comment, error) {
 	uid, err := uuid.Parse(userID)
@@ -222,6 +246,34 @@ func (s *ReportService) ToggleUpvote(userID, postID string) (bool, error) {
 		return false, err
 	}
 	return s.PostRepo.ToggleUpvote(uid, pid)
+}
+
+// UpdatePostStatus updates the status of a post (e.g., open -> closed)
+func (s *ReportService) UpdatePostStatus(postID, status, notes string) (*models.Post, error) {
+	pid, err := uuid.Parse(postID)
+	if err != nil {
+		return nil, err
+	}
+	
+	// Validate status
+	validStatuses := map[string]bool{"open": true, "inprogress": true, "closed": true}
+	if !validStatuses[status] {
+		return nil, err // invalid status
+	}
+	
+	// Update the post status in the database
+	post, err := s.PostRepo.UpdatePostStatus(pid, status)
+	if err != nil {
+		return nil, err
+	}
+	
+	// If notes provided, append as a system comment (optional enhancement)
+	if notes != "" {
+		systemUserID := uuid.Nil // or a special admin user ID
+		_, _ = s.PostRepo.AddComment(pid, systemUserID, "[Admin] "+notes)
+	}
+	
+	return post, nil
 }
 
 // UpdatePostUrgencyFromComments recalculates the post's urgency based on all its comments

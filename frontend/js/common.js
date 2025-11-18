@@ -137,9 +137,11 @@ let geoCache = JSON.parse(localStorage.getItem('uc_geo_cache') || '{}');
 function updateAuthUI() {
   const jwt = localStorage.getItem('jwt');
   const user = localStorage.getItem('uc_user');
+  const role = localStorage.getItem('uc_role');
   const loginBtn = document.getElementById('login-btn');
   const logoutBtn = document.getElementById('logout-btn');
   const userDisplay = document.getElementById('user-display');
+  const adminLink = document.getElementById('nav-admin');
 
   if (jwt && user) {
     // User is logged in
@@ -149,11 +151,17 @@ function updateAuthUI() {
       logoutBtn.addEventListener('click', logout);
     }
     if (userDisplay) userDisplay.textContent = `👤 ${user}`;
+    
+    // Show admin link only if user is admin
+    if (adminLink) {
+      adminLink.style.display = role === 'admin' ? 'inline-block' : 'none';
+    }
   } else {
     // User is not logged in
     if (loginBtn) loginBtn.style.display = 'block';
     if (logoutBtn) logoutBtn.style.display = 'none';
     if (userDisplay) userDisplay.textContent = '';
+    if (adminLink) adminLink.style.display = 'none';
   }
 }
 

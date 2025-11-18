@@ -23,4 +23,10 @@ func RegisterRoutes(feedHandler *handlers.FeedHandler, reportHandler *handlers.R
 	// Comments and upvotes
 	http.Handle("/comment", authMw(http.HandlerFunc(reportHandler.ServeComment)))
 	http.Handle("/upvote", authMw(http.HandlerFunc(reportHandler.ServeUpvote)))
+	
+	// Admin: protect with AuthMiddleware + AdminMiddleware
+	adminMw := auth.AdminMiddleware(http.HandlerFunc(reportHandler.ServeUpdateStatus))
+	http.Handle("/api/admin/post-status", authMw(adminMw))
+	adminMw2 := auth.AdminMiddleware(http.HandlerFunc(feedHandler.ServeAdminFeed))
+	http.Handle("/api/admin/issues", authMw(adminMw2))
 }

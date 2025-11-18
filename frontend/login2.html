@@ -202,6 +202,18 @@
           localStorage.setItem('uc_user', googleName);
           localStorage.setItem('google_id', googleId);
           localStorage.setItem('uc_email', googleEmail);
+          
+          // Extract role from JWT
+          try {
+            const parts = data.access_token.split('.');
+            if (parts.length === 3) {
+              const payload = JSON.parse(atob(parts[1]));
+              localStorage.setItem('uc_role', payload.role || 'user');
+            }
+          } catch (e) {
+            localStorage.setItem('uc_role', 'user');
+          }
+          
           // Persist backend base URL so other pages use the correct API origin
           localStorage.setItem('api_base', 'https://urban-civic-9oxw.onrender.com');
           

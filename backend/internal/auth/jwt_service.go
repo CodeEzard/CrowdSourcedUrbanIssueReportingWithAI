@@ -32,8 +32,14 @@ func NewJWTService() *JWTService {
 
 // GenerateToken returns a signed JWT containing the user ID.
 func (s *JWTService) GenerateToken(userID uuid.UUID) (string, error) {
+	return s.GenerateTokenWithRole(userID, "user")
+}
+
+// GenerateTokenWithRole returns a signed JWT containing the user ID and role.
+func (s *JWTService) GenerateTokenWithRole(userID uuid.UUID, role string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID.String(),
+		"role":    role,
 		"exp":     time.Now().Add(time.Duration(s.expiryMinutes) * time.Minute).Unix(),
 		"iat":     time.Now().Unix(),
 	}
@@ -68,6 +74,31 @@ func (s *JWTService) ValidateToken(tokenStr string) (uuid.UUID, error) {
 		return uuid.Nil, err
 	}
 	return uid, nil
+}
+
+// GetRoleFromToken extracts the role claim from a JWT token.
+func (s *JWTService) GetRoleFromToken(tokenStr string) (string, error) {
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(s.secret), nil
+	})
+	if err != nil {
+		return "", err
+	}
+	if !token.Valid {
+		return "", errors.New("invalid token")
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", errors.New("invalid token claims")
+	}
+	role, ok := claims["role"].(string)
+	if !ok {
+		return "user", nil // default to "user" if role claim is missing
+	}
+	return role, nil
 }
 
 // GetTokenExpiry returns the duration until token expiry. If token is invalid or
