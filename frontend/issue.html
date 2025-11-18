@@ -64,24 +64,29 @@
       .then(response => response.text())
       .then(data => {
         qs('#header-placeholder').innerHTML = data;
+        updateAuthUI(); // Ensure auth UI is updated after header is loaded
         initHeader();
       });
 
     function initHeader() {
+      const nav = qs('nav');
+      const menuToggle = qs('#menu-toggle');
+      
       qs('#nav-issues').classList.add('active');
-      qs('#menu-toggle').addEventListener('click', () => {
-        qs('nav').classList.toggle('active');
-      });
-      document.addEventListener('click', e => {
-        if (!qs('nav').contains(e.target) && !qs('#menu-toggle').contains(e.target)) {
-          qs('nav').classList.remove('active');
-        }
-      });
+      if (nav) nav.classList.add('active');
+      
+      if (menuToggle) {
+        menuToggle.addEventListener('click', () => {
+          if (nav) nav.classList.toggle('active');
+        });
+      }
+      
       qsa('nav a').forEach(link => {
         link.addEventListener('click', () => {
-          qs('nav').classList.remove('active');
+          if (nav) nav.classList.remove('active');
         });
       });
+      
       qs('#role').value = role;
       qs('#role').addEventListener('change', e => {
         role = e.target.value;

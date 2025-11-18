@@ -71,13 +71,29 @@
   <script>
     // Check if user is authenticated and is admin
     if (!localStorage.getItem('jwt')) {
+      console.log('No JWT found');
       window.location.href = 'login2.html';
     }
     
     // Check if user has admin role
     const role = localStorage.getItem('uc_role');
+    console.log('User role:', role);
+    console.log('All localStorage keys:', Object.keys(localStorage));
+    
+    // Debug: Show what's in the JWT
+    const jwt = localStorage.getItem('jwt');
+    if (jwt) {
+      try {
+        const payload = JSON.parse(atob(jwt.split('.')[1]));
+        console.log('JWT payload:', payload);
+      } catch (e) {
+        console.log('Could not parse JWT:', e);
+      }
+    }
+    
     if (role !== 'admin') {
-      alert('You do not have admin access');
+      console.log('User is not admin. Role is:', role);
+      alert('You do not have admin access. Role: ' + (role || 'undefined'));
       window.location.href = 'profile.html';
     }
 
@@ -89,7 +105,9 @@
       .then(r => r.text())
       .then(data => {
         qs('#header-placeholder').innerHTML = data;
+        updateAuthUI(); // Ensure auth UI is updated after header is loaded
         qs('#nav-profile')?.classList.add('active');
+        qs('nav')?.classList.add('active');
       });
 
     // Fetch and render issues

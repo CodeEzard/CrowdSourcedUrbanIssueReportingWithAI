@@ -7,7 +7,55 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: var(--card-bg, #f8fafc);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+      margin-bottom: 16px;
+    }
+    .profile-header:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .profile-pic {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      border: 3px solid var(--accent, #0d9488);
+      object-fit: cover;
+      background-color: #fff;
+    }
+    .profile-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .profile-info h2 {
+      margin: 0;
+      color: var(--text, #0f172a);
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .profile-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 8px 16px;
+      margin-top: 6px;
+      font-size: 0.9rem;
+      color: #475569;
+    }
+    .profile-meta i {
+      color: var(--accent, #0d9488);
+      margin-right: 6px;
+    }
+  </style>
 </head>
+
 <body>
   <div id="header-placeholder"></div>
 
@@ -17,17 +65,30 @@
         <div>
           <div class="card" id="profile-card">
             <h2 id="profile-title">Your Profile</h2>
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-              <img id="profile-pic" class="profile-pic" src="data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"48\"><circle cx=\"24\" cy=\"24\" r=\"24\" fill=\"%23e6eef6\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">User</text></svg>
-              <div>
-                <div id="profile-meta" class="muted small"></div>
-                <label for="profile-pic-upload" class="btn" style="margin-top:8px">Change Picture</label>
+
+            <!-- 💎 Improved Profile Header -->
+            <div class="profile-header">
+              <img id="profile-pic" class="profile-pic" 
+                   src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><circle cx='24' cy='24' r='24' fill='%23e6eef6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23004d40'>U</text></svg>" 
+                   alt="Profile picture">
+              <div class="profile-info">
+                <h2 id="profile-name">User Name</h2>
+                <div id="profile-meta" class="profile-meta">
+                  <div><i class="fa-solid fa-user-shield"></i> Role: <span id="meta-role"></span></div>
+                  <div><i class="fa-solid fa-id-badge"></i> Username: <span id="meta-user"></span></div>
+                  <div><i class="fa-solid fa-flag"></i> Reports: <span id="meta-reports"></span></div>
+                  <div><i class="fa-solid fa-arrow-up"></i> Upvotes: <span id="meta-upvotes"></span></div>
+                </div>
+                <label for="profile-pic-upload" class="btn" style="margin-top:10px;width:max-content;">Change Picture</label>
                 <input type="file" id="profile-pic-upload" accept="image/*" style="display:none">
               </div>
             </div>
+            <!-- End Header -->
+
             <div id="profile-issues" class="list"></div>
           </div>
         </div>
+
         <aside>
           <div class="card">
             <h3>Quick Filters</h3>
@@ -40,6 +101,7 @@
       </div>
     </section>
 
+    <!-- Modal -->
     <div id="issue-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal-content">
         <button class="modal-close" id="modal-close" aria-label="Close modal">✕</button>
@@ -55,27 +117,11 @@
     </div>
   </main>
 
-
-
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script>window.API_BASE = 'https://urban-civic-9oxw.onrender.com';</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
   <script src="js/common.js"></script>
+
   <script>
-    // Ensure current user name and role are available (fallbacks if common.js not yet set)
-    const currentUser = localStorage.getItem('uc_user') || 'User';
-    let role = localStorage.getItem('uc_role') || 'user';
-    let profilePic = localStorage.getItem('uc_profile_pic') || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><circle cx='24' cy='24' r='24' fill='%23e6eef6'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23004d40'>" + (currentUser.substring(0,1).toUpperCase()) + "</text></svg>";
-    // Update heading immediately to reflect username (works even if DOMContentLoaded already fired)
-    (function updateTitleNow() {
-      const titleEl = document.getElementById('profile-title');
-      if (titleEl) titleEl.textContent = (currentUser || 'User') + ' — Profile';
-    })();
-    // Check if user is authenticated - redirect to login if not
-    if (!localStorage.getItem('jwt')) {
-      window.location.href = 'login2.html';
-    }
-    
     fetch('includes/header.html')
       .then(response => response.text())
       .then(data => {
@@ -103,16 +149,16 @@
         role = e.target.value;
         localStorage.setItem('uc_role', role);
         updateProfileLink();
-        window.location.href = 'admin-user.html'; 
+         window.location.href = 'admin-user.html'; //ye dekho
       });
       qs('#theme-toggle').addEventListener('click', () => {
         document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark';
         localStorage.setItem('uc_theme', document.body.dataset.theme);
-        qs('#theme-toggle').textContent = document.body.dataset.theme === 'dark' ? '☀️' : '🌙';
+        qs('#theme-toggle').textContent = document.body.dataset.theme === 'dark' ? '☀' : '🌙';
       });
       if (localStorage.getItem('uc_theme') === 'dark') {
         document.body.dataset.theme = 'dark';
-        qs('#theme-toggle').textContent = '☀️';
+        qs('#theme-toggle').textContent = '☀';
       }
       updateProfileLink();
     }
@@ -124,7 +170,7 @@
     function showModal(issue) {
       qs('#modal-title').textContent = issue.title;
       qs('#modal-content').innerHTML = `
-        <img src="${issue.photo || 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"100%\" height=\"100%\" fill=\"%23f3f9f8\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">No Image</text></svg>'}" alt="${issue.title}">
+        <img src="${issue.photo || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="100%" height="100%" fill="%23f3f9f8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23004d40">No Image</text></svg>'}" alt="${issue.title}">
         <div><strong>Category:</strong> ${issue.category}</div>
         <div><strong>Location:</strong> ${issue.location}</div>
         <div><strong>Description:</strong> ${issue.desc}</div>
@@ -156,28 +202,28 @@
       }
     });
 
-    qs('#comment-submit').addEventListener('click', async () => {
+    qs('#comment-submit').addEventListener('click', () => {
       const comment = qs('#comment-input').value.trim();
-      const issueId = qs('#comment-submit').dataset.issueId;
-      if (!comment || !issueId) return;
-      try {
-        const resp = await postComment(String(issueId), comment);
-        const issue = issues.find(i => String(i.id) === String(issueId));
+      const issueId = Number(qs('#comment-submit').dataset.issueId);
+      if (comment && issueId) {
+        const issue = issues.find(i => i.id === issueId);
         if (issue) {
-          issue.comments.push({ user: resp.user?.name || currentUser, text: resp.content || comment, timestamp: resp.created_at || new Date().toISOString() });
+          issue.comments.push({ user: currentUser, text: comment, timestamp: new Date().toISOString() });
+          saveData(issues);
           showToast('Comment added!');
           showModal(issue);
         }
-        qs('#comment-input').value = '';
-      } catch (err) {
-        console.warn('Failed to post comment:', err);
-        showToast('Failed to add comment: ' + (err.message || ''), 'error');
       }
     });
 
     function renderProfile() {
       qs('#profile-pic').src = profilePic;
-      qs('#profile-meta').textContent = `User: ${currentUser} • Role: ${role} • Reports: ${issues.filter(i => i.reporter === currentUser).length} • Upvotes Given: ${Object.keys(upvotes).filter(k => k.startsWith(currentUser + '_')).length}`;
+      qs('#meta-role').textContent = role;
+      qs('#meta-user').textContent = currentUser;
+      qs('#meta-reports').textContent = issues.filter(i => i.reporter === currentUser).length;
+      qs('#meta-upvotes').textContent = Object.keys(upvotes).filter(k => k.startsWith(currentUser)).length;
+      qs('#profile-name').textContent = currentUser;
+
       qs('#profile-issues').innerHTML = '';
       const mine = issues.filter(i => i.reporter === currentUser);
       if (mine.length === 0) {
@@ -187,20 +233,20 @@
         const d = document.createElement('div');
         d.className = 'issue';
         d.innerHTML = `
-  <img loading="lazy" 
-       src="${it.photo || 'images/pothole.jpg'}" 
-       alt="${it.title}">
-  <div class="meta">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div style="font-weight:700"><span class="category-icon">${getCategoryIcon(it.category)}</span>${it.title}</div>
-      <div class="muted small">${it.votes}▲</div>
-    </div>
-    <div class="muted small">${it.category} • ${it.location}</div>
-    <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
-    <div style="margin-top:12px">${actions}</div>
-  </div>
-`;
-
+          <img loading="lazy" src="${it.photo || 'images/pothole.jpg'}" alt="${it.title}">
+          <div class="meta">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div style="font-weight:700"><span class="category-icon">${getCategoryIcon(it.category)}</span>${it.title}</div>
+              <div class="muted small">${it.votes}▲</div>
+            </div>
+            <div class="muted small">${it.category} • ${it.location}</div>
+            <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
+            <div style="margin-top:12px">
+              <button class="btn" data-delete="${it.id}" aria-label="Delete issue ${it.title}">Delete</button>
+              <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
+            </div>
+          </div>
+        `;
         qs('#profile-issues').appendChild(d);
       });
       observeIssues(qs('#profile-issues'));
@@ -223,10 +269,7 @@
       reader.readAsDataURL(f);
     });
 
-    qs('#my-reports-btn').addEventListener('click', () => {
-      renderProfile();
-    });
-
+    qs('#my-reports-btn').addEventListener('click', () => renderProfile());
     qs('#upvoted-btn').addEventListener('click', () => {
       qs('#profile-issues').innerHTML = '';
       const upvotedIssues = issues.filter(issue => upvotes[`${currentUser}_${issue.id}`]);
@@ -259,19 +302,21 @@
       const deleteBtn = e.target.closest('[data-delete]');
       const openBtn = e.target.closest('[data-open]');
       if (deleteBtn) {
-        const id = deleteBtn.getAttribute('data-delete');
-        lastDeletedIssue = issues.find(i => String(i.id) === String(id));
-        issues = issues.filter(i => String(i.id) !== String(id));
+        const id = Number(deleteBtn.getAttribute('data-delete'));
+        lastDeletedIssue = issues.find(i => i.id === id);
+        issues = issues.filter(i => i.id !== id);
+        saveData(issues);
         showToast('Report deleted. <button class="btn undo-delete" style="margin-left:8px;padding:4px 8px">Undo</button>', 'error');
         renderProfile();
       }
       if (openBtn) {
-        const id = openBtn.getAttribute('data-open');
-        const issue = issues.find(i => String(i.id) === String(id));
+        const id = Number(openBtn.getAttribute('data-open'));
+        const issue = issues.find(i => i.id === id);
         if (issue) showModal(issue);
       }
       if (e.target.closest('.undo-delete') && lastDeletedIssue) {
         issues.push(lastDeletedIssue);
+        saveData(issues);
         showToast('Report restored!');
         lastDeletedIssue = null;
         renderProfile();

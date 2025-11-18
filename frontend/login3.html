@@ -45,30 +45,45 @@
         return;
       }
 
-      // Mock backend response (temporary)
-      // --- Replace this with your real backend URL later ---
-      const mockResponse = {
-        token: "mock_jwt_token_123",
-        user: {
-          name: name,
-          email: "mockuser@gmail.com",
-          reports: [
-            { id: 1, title: "Pothole near school", status: "Pending" },
-            { id: 2, title: "Broken streetlight", status: "Resolved" }
-          ],
-          upvoted: [
-            { id: 5, title: "Garbage near park" },
-            { id: 6, title: "Leaking pipeline" }
-          ]
+      // Send credentials to backend
+      const credentialToken = response.credential;
+      
+      fetch('/google-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'credential=' + credentialToken
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('Auth failed');
+        return res.json();
+      })
+      .then(data => {
+        if (data.access_token) {
+          // Store JWT and user info
+          localStorage.setItem('jwt', data.access_token);
+          localStorage.setItem('uc_user', name);
+          
+          // Extract role from JWT
+          try {
+            const parts = data.access_token.split('.');
+            if (parts.length === 3) {
+              const payload = JSON.parse(atob(parts[1]));
+              localStorage.setItem('uc_role', payload.role || 'user');
+            }
+          } catch (e) {
+            localStorage.setItem('uc_role', 'user');
+          }
+          
+          console.log('Login successful! Role:', localStorage.getItem('uc_role'));
+          window.location.href = 'index.html';
+        } else {
+          alert('Login failed');
         }
-      };
-
-      // Store mock data in localStorage (acts like real backend data)
-      localStorage.setItem("jwt", mockResponse.token);
-      localStorage.setItem("userData", JSON.stringify(mockResponse.user));
-
-      alert("Login successful!");
-      window.location.href = "profile.html";
+      })
+      .catch(err => {
+        console.error('Login error:', err);
+        alert('Login error: ' + err.message);
+      });
     }
 
     // Bubbles animation
