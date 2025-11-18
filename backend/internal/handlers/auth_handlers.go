@@ -133,10 +133,10 @@ func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	role := "user"
 	// Check if user is admin (hardcoded list for now)
 	adminEmails := map[string]bool{
-		"admin@example.com":          true,
-		"shreshtha231b322@gmail.com": true,
-		"231b328@juetguna.in":        true,
-		"231b315@juetguna.in":        true,
+		"admin@example.com":   true,
+		"231b322@juetguna.in": true,
+		"231b328@juetguna.in": true,
+		"231b315@juetguna.in": true,
 		// Add more admin emails as needed
 	}
 	if adminEmails[user.Email] {
@@ -244,7 +244,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	role := "user"
 	// Check if user is admin
 	adminEmails := map[string]bool{
-		"admin@example.com": true,
+		"admin@example.com":   true,
+		"231b322@juetguna.in": true,
+		"231b328@juetguna.in": true,
+		"231b315@juetguna.in": true,
 	}
 	if adminEmails[user.Email] {
 		role = "admin"

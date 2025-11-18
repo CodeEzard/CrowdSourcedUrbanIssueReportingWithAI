@@ -194,6 +194,9 @@ async function logout() {
   // Clear local storage and redirect
   localStorage.removeItem('jwt');
   localStorage.removeItem('uc_user');
+  localStorage.removeItem('uc_role');
+  localStorage.removeItem('uc_email');
+  localStorage.removeItem('google_id');
   updateAuthUI();
   window.location.href = 'login2.html';
 }
