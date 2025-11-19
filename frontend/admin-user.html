@@ -278,124 +278,64 @@
       qs('#meta-reports').textContent = issues.filter(i => i.reporter === currentUser).length;
       qs('#meta-upvotes').textContent = Object.keys(upvotes).filter(k => k.startsWith(currentUser)).length;
       
-      // Set quick filters based on role
-      const filters = qs('#quick-filters');
-      filters.innerHTML = role === 'admin' 
-        ? `
-            <button class="btn" id="all-issues-btn">All Issues</button>
-            <button class="btn secondary" id="open-issues-btn">Open Issues</button>
-            <button class="btn secondary" id="assigned-issues-btn">Assigned Issues</button>
-          `
-        : `
-            <button class="btn" id="my-reports-btn">My Reports</button>
-            <button class="btn secondary" id="upvoted-btn">Upvoted</button>
-          `;
-
-      // Render issues based on role
       const el = qs('#profile-issues');
       el.innerHTML = '';
-      let list = role === 'admin' ? issues : issues.filter(i => i.reporter === currentUser);
-      if (list.length === 0) {
-        el.innerHTML = `<div class="muted">${role === 'admin' ? 'No issues reported yet.' : 'You have not reported anything yet.'}</div>`;
-      }
-      list.forEach(it => {
-        const d = document.createElement('div');
-        d.className = 'issue';
-        let actions = '';
-        if (role === 'admin') {
-          actions = `
-            <button class="btn" data-open="${it.id}" aria-label="View and manage issue ${it.title}">Manage</button>
-          `;
-        } else if (it.reporter === currentUser) {
-          actions = `
-            <button class="btn" data-delete="${it.id}" aria-label="Delete issue ${it.title}">Delete</button>
-            <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
-          `;
-        } else {
-          actions = `
-            <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
-          `;
-        }
-        d.innerHTML = `
-          <img loading="lazy" src="${it.photo || 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"100%\" height=\"100%\" fill=\"%23f7fbfa\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">No Image</text></svg>'}" alt="${it.title}">
-          <div class="meta">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700"><span class="category-icon">${getCategoryIcon(it.category)}</span>${it.title}</div>
-              <div class="muted small">${it.votes}▲</div>
-            </div>
-            <div class="muted small">${it.category} • ${it.location}</div>
-            <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
-            <div style="margin-top:12px">${actions}</div>
-          </div>`;
-        el.appendChild(d);
-      });
-      observeIssues(el);
-
-      // Add event listeners for filters
+      
       if (role === 'admin') {
-        qs('#all-issues-btn').addEventListener('click', () => {
-          list = issues;
-          renderIssues(list);
-        });
-        qs('#open-issues-btn').addEventListener('click', () => {
-          list = issues.filter(i => i.status === 'open');
-          renderIssues(list);
-        });
-        qs('#assigned-issues-btn').addEventListener('click', () => {
-          list = issues.filter(i => i.assignedAt);
-          renderIssues(list);
-        });
-      } else {
-        qs('#my-reports-btn').addEventListener('click', () => {
-          list = issues.filter(i => i.reporter === currentUser);
-          renderIssues(list);
-        });
-        qs('#upvoted-btn').addEventListener('click', () => {
-          list = issues.filter(issue => upvotes[`${currentUser}_${issue.id}`]);
-          renderIssues(list);
-        });
-      }
-    }
-
-    function renderIssues(list) {
-      const el = qs('#profile-issues');
-      el.innerHTML = '';
-      if (list.length === 0) {
-        el.innerHTML = `<div class="muted">${role === 'admin' ? 'No issues match the filter.' : 'No issues found.'}</div>`;
-        return;
-      }
-      list.forEach(it => {
-        const d = document.createElement('div');
-        d.className = 'issue';
-        let actions = '';
-        if (role === 'admin') {
-          actions = `
-            <button class="btn" data-open="${it.id}" aria-label="View and manage issue ${it.title}">Manage</button>
-          `;
-        } else if (it.reporter === currentUser) {
-          actions = `
-            <button class="btn" data-delete="${it.id}" aria-label="Delete issue ${it.title}">Delete</button>
-            <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
-          `;
+        // Admin view: Show all issues with status update button
+        if (issues.length === 0) {
+          el.innerHTML = '<div class="muted">No issues reported yet.</div>';
         } else {
-          actions = `
-            <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
-          `;
+          issues.forEach(it => {
+            const d = document.createElement('div');
+            d.className = 'issue';
+            d.innerHTML = `
+              <img loading="lazy" src="${it.photo || 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"100%\" height=\"100%\" fill=\"%23f7fbfa\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">No Image</text></svg>'}" alt="${it.title}">
+              <div class="meta">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="font-weight:700"><span class="category-icon">${getCategoryIcon(it.category)}</span>${it.title}</div>
+                  <div class="muted small">${it.votes}▲</div>
+                </div>
+                <div class="muted small">${it.category} • ${it.location}</div>
+                <div class="muted small">Reported by: ${it.reporter}</div>
+                <div class="muted small"><span class="status ${it.status}">${it.status}</span></div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
+                  <button class="btn secondary" data-update="${it.id}" aria-label="Update status for ${it.title}">Update Status</button>
+                </div>
+              </div>
+            `;
+            el.appendChild(d);
+          });
         }
-        d.innerHTML = `
-          <img loading="lazy" src="${it.photo || 'data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"400\" height=\"300\"><rect width=\"100%\" height=\"100%\" fill=\"%23f7fbfa\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%23004d40\">No Image</text></svg>'}" alt="${it.title}">
-          <div class="meta">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <div style="font-weight:700"><span class="category-icon">${getCategoryIcon(it.category)}</span>${it.title}</div>
-              <div class="muted small">${it.votes}▲</div>
-            </div>
-            <div class="muted small">${it.category} • ${it.location}</div>
-            <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
-            <div style="margin-top:12px">${actions}</div>
-          </div>
-        `;
-        el.appendChild(d);
-      });
+      } else {
+        // User view: Show only their own issues
+        const mine = issues.filter(i => i.reporter === currentUser);
+        if (mine.length === 0) {
+          el.innerHTML = '<div class="muted">You have not reported anything yet.</div>';
+        } else {
+          mine.forEach(it => {
+            const d = document.createElement('div');
+            d.className = 'issue';
+            d.innerHTML = `
+              <img loading="lazy" src="${it.photo || 'images/pothole.jpg'}" alt="${it.title}">
+              <div class="meta">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <div style="font-weight:700"><span class="category-icon">${getCategoryIcon(it.category)}</span>${it.title}</div>
+                  <div class="muted small">${it.votes}▲</div>
+                </div>
+                <div class="muted small">${it.category} • ${it.location}</div>
+                <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
+                <div style="margin-top:12px">
+                  <button class="btn" data-delete="${it.id}" aria-label="Delete issue ${it.title}">Delete</button>
+                  <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
+                </div>
+              </div>
+            `;
+            el.appendChild(d);
+          });
+        }
+      }
       observeIssues(el);
     }
 
@@ -419,7 +359,9 @@
     document.addEventListener('click', e => {
       const deleteBtn = e.target.closest('[data-delete]');
       const openBtn = e.target.closest('[data-open]');
+      const updateBtn = e.target.closest('[data-update]');
       const undoBtn = e.target.closest('.undo-delete');
+      
       if (deleteBtn) {
         const id = deleteBtn.getAttribute('data-delete');
         lastDeletedIssue = issues.find(i => String(i.id) === String(id));
@@ -427,20 +369,63 @@
         showToast('Report deleted. <button class="btn undo-delete" style="margin-left:8px;padding:4px 8px">Undo</button>', 'error');
         renderProfile();
       }
+      
       if (openBtn) {
         const id = openBtn.getAttribute('data-open');
         const issue = issues.find(i => String(i.id) === String(id));
         if (issue) showModal(issue);
       }
+      
+      if (updateBtn && role === 'admin') {
+        const id = updateBtn.getAttribute('data-update');
+        const issue = issues.find(i => String(i.id) === String(id));
+        if (issue) {
+          // Create a simple status update dialog
+          const currentStatus = issue.status;
+          const newStatus = prompt(
+            'Select new status:\n1 = Open\n2 = In Progress\n3 = Closed',
+            currentStatus === 'open' ? '1' : currentStatus === 'inprogress' ? '2' : '3'
+          );
+          
+          if (newStatus) {
+            const statusMap = { '1': 'open', '2': 'inprogress', '3': 'closed' };
+            const updated = statusMap[newStatus];
+            if (updated && updated !== currentStatus) {
+              // Update locally
+              issue.status = updated;
+              showToast(`Issue status updated to ${updated}!`);
+              renderProfile();
+              
+              // Try to persist to backend (async, non-blocking)
+              apiFetch(`/api/admin/post-status`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('jwt')}`
+                },
+                body: JSON.stringify({ post_id: id, status: updated })
+              }).catch(err => console.warn('Note: Status update may not be persisted to server:', err));
+            }
+          }
+        }
+      }
+      
       if (undoBtn && lastDeletedIssue) {
         issues.push(lastDeletedIssue);
+        saveData(issues);
         showToast('Report restored!');
         lastDeletedIssue = null;
         renderProfile();
       }
     });
 
-    renderProfile();
+    // Fetch issues from server and render
+    fetchFeedFromServer().then(() => {
+      renderProfile();
+    }).catch(err => {
+      console.error('Failed to fetch issues:', err);
+      renderProfile(); // Still render even if fetch fails (might have local data)
+    });
   </script>
 </body>
 </html>

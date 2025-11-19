@@ -201,12 +201,15 @@
             <div class="muted small">${it.category} • ${it.desc}</div>
             ${typeof it.priority_level === 'number' ? `<div class="muted small">Priority: ${it.priority_level} ${typeof it.priority_score === 'number' ? `(${it.priority_score.toFixed(2)})` : ''}</div>` : ''}
             <div class="muted small">${it.assignedAt ? `Assigned: ${new Date(it.assignedAt).toLocaleString()}` : ''}</div>
-            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+            <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
               <div class="issue-actions">
                 <button class="upvote" data-id="${it.id}" aria-label="Upvote issue ${it.title}">▲ ${it.votes}</button>
                 <span title="Urgency" class="status ${it.status}">${it.status}</span>
               </div>
-              <div><button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn" data-open="${it.id}" aria-label="View details for ${it.title}">View Details</button>
+                ${role === 'admin' ? `<button class="btn secondary" data-update="${it.id}" aria-label="Update status for ${it.title}">Update Status</button>` : ''}
+              </div>
             </div>
           </div>`;
         el.appendChild(d);
@@ -222,6 +225,42 @@
   document.addEventListener('click', async e => {
       const upvoteBtn = e.target.closest('.upvote[data-id]');
       const openBtn = e.target.closest('[data-open]');
+      const updateBtn = e.target.closest('[data-update]');
+      
+      if (updateBtn && role === 'admin') {
+        const id = updateBtn.getAttribute('data-update');
+        const issue = issues.find(i => String(i.id) === String(id));
+        if (issue) {
+          // Create a simple status update dialog
+          const currentStatus = issue.status;
+          const newStatus = prompt(
+            'Select new status:\n1 = Open\n2 = In Progress\n3 = Closed',
+            currentStatus === 'open' ? '1' : currentStatus === 'inprogress' ? '2' : '3'
+          );
+          
+          if (newStatus) {
+            const statusMap = { '1': 'open', '2': 'inprogress', '3': 'closed' };
+            const updated = statusMap[newStatus];
+            if (updated && updated !== currentStatus) {
+              // Update locally
+              issue.status = updated;
+              showToast(`Issue status updated to ${updated}!`);
+              renderIssues();
+              
+              // Try to persist to backend (async, non-blocking)
+              apiFetch(`/api/admin/post-status`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('jwt')}`
+                },
+                body: JSON.stringify({ post_id: id, status: updated })
+              }).catch(err => console.warn('Note: Status update may not be persisted to server:', err));
+            }
+          }
+        }
+      }
+      
       if (upvoteBtn) {
         const id = upvoteBtn.getAttribute('data-id');
         try {

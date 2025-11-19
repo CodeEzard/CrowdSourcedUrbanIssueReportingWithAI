@@ -27,9 +27,6 @@ import (
 )
 
 func main() {
-	// Load environment variables from backend/.env (if present). This allows
-	// FRONTEND_DIR, JWT_SECRET, ALLOWED_ORIGIN, REDIS_ADDR, etc. to be set
-	// in a simple file during local development.
 	config.LoadEnv()
 
 	dsn := os.Getenv("DATABASE_DSN")
@@ -62,39 +59,32 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Initialize repositories, services, handlers
 	postRepo := repository.NewPostRepository(db)
 	feedService := services.NewFeedService(postRepo)
 	reportService := services.NewReportService(postRepo)
 	feedHandler := handlers.NewFeedHandler(feedService)
 	reportHandler := handlers.NewReportHandler(reportService)
 	mlHandler := handlers.NewMLHandler()
-	// JWT service for auth
+
 	jwtSvc := auth.NewJWTService()
-	// user repo & auth service
+
 	userRepo := repository.NewUserRepository(db)
 	authService := services.NewAuthService(userRepo)
 
-	// initialize redis
+	
 	redisAddr := config.GetRedisAddr()
 	var redisClient *redis.Client
 	if redisAddr != "" {
 		redisClient = cache.NewRedisClient(redisAddr, config.GetRedisPassword())
 	}
 
-	// auth handler (pass redis client if available)
 	authHandler := handlers.NewAuthHandler(authService, jwtSvc, redisClient)
 
-	// Register routes (report is protected). Pass redis client if available.
-	// Register routes inline to avoid package-level resolution issues.
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// Lightweight timing endpoint for performance diagnostics
-	// Usage: curl -w "\ntime_namelookup: %{time_namelookup}\n..." -o /dev/null https://host/api/endpoint
-	// Optional query param: ?delay_ms=NNN to simulate server-side delay in milliseconds
 	http.HandleFunc("/api/endpoint", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if d := r.URL.Query().Get("delay_ms"); d != "" {
@@ -106,12 +96,6 @@ func main() {
 		_, _ = w.Write([]byte(`{"ok":true,"endpoint":"/api/endpoint"}`))
 	})
 
-	// Serve API routes first, then serve the frontend static directory so that
-	// requests for assets (css/js/includes) are handled by the file server.
-	// Frontend files live at ../frontend relative to backend/.
-	// Serve static files but avoid exposing raw directory listings.
-	// Resolve frontend directory from env or auto-detect common locations so the
-	// server still works regardless of working directory when started.
 	frontendDir := os.Getenv("FRONTEND_DIR")
 	if frontendDir == "" {
 		candidates := []string{"./frontend", "../frontend", "./public", "../public"}
@@ -126,7 +110,7 @@ func main() {
 		if found != "" {
 			frontendDir = found
 		} else {
-			// fallback if nothing found
+
 			frontendDir = "../frontend"
 		}
 	}
@@ -135,7 +119,6 @@ func main() {
 	fileServer := http.FileServer(fileSystem)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Serve index.html at root; client code (localStorage) decides auth gating
 		if r.URL.Path == "/" || r.URL.Path == "" {
 			idx := filepath.Join(frontendDir, "index.html")
 			if _, err := os.Stat(idx); err == nil {
@@ -145,11 +128,11 @@ func main() {
 			http.NotFound(w, r)
 			return
 		}
-		// Prevent directory listings: if path ends with '/' check for index.html
+		
 		if strings.HasSuffix(r.URL.Path, "/") {
-			// try to serve index.html inside the requested directory
+			
 			idxPath := path.Clean(r.URL.Path + "index.html")
-			// idxPath is a URL path; map it to filesystem path under frontendDir
+			
 			fsPath := filepath.Join(frontendDir, strings.TrimPrefix(idxPath, "/"))
 			if _, err := os.Stat(fsPath); err != nil {
 				http.NotFound(w, r)
@@ -158,23 +141,20 @@ func main() {
 			http.ServeFile(w, r, fsPath)
 			return
 		}
-		// For regular files, let the file server handle them. If not found it will 404.
+		
 		fileServer.ServeHTTP(w, r)
 	})
 	http.HandleFunc("/feed", feedHandler.ServeFeed)
 	http.HandleFunc("/login", authHandler.Login)
 	http.HandleFunc("/register", authHandler.Register)
-	// Social auth simplified endpoint
+	
 	http.HandleFunc("/google-login", authHandler.GoogleLogin)
-	// ML endpoints (public - for frontend real-time predictions)
+	
 	http.HandleFunc("/classify-image", mlHandler.ServeClassifyImage)
 	http.HandleFunc("/predict-urgency", mlHandler.ServePredictUrgency)
 	authMw := auth.AuthMiddleware(jwtSvc, redisClient)
 
-	// Allow disabling auth in development for quick local testing. When
-	// DISABLE_AUTH=true we create or find a test user and set a fallback
-	// DevTestUserID used by the handlers. Routes are registered without
-	// the auth middleware so requests work without a token.
+	
 	if strings.ToLower(os.Getenv("DISABLE_AUTH")) == "true" {
 		devEmail := os.Getenv("DEV_TEST_USER_EMAIL")
 		if devEmail == "" {
